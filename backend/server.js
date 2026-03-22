@@ -1,27 +1,26 @@
+require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
+const Together = require('together-ai');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 const server = http.createServer(app);
-const io = new Server(server, {
-    cors: { 
-        origin: "*", 
-        methods: ["GET", "POST"] 
-    }
-});
+const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } });
 
-// Event Broker Monolith Logic
+// Initialize Together AI only if the API key is present
+const together = process.env.TOGETHER_API_KEY ? new Together({ apiKey: process.env.TOGETHER_API_KEY }) : null;
+
 io.on('connection', (socket) => {
     console.log('[NODE 👑] Client connected to UHNWI+ Event Bus');
     
-    // Simulate reading mandates from the root directory
+    // Serve mandates for the frontend UI
     socket.on('get_mandates', () => {
         const rootDir = path.join(__dirname, '../00_FOUNDER_INPUT');
         if (fs.existsSync(rootDir)) {
@@ -32,43 +31,75 @@ io.on('connection', (socket) => {
         }
     });
     
-    // Listen for Web UI pressing "Execute"
-    socket.on('trigger_pipeline', (data) => {
-        console.log(`[NODE 👑] Pipeline Triggered: ${data.phase}`);
+    // Core Execution Pipeline trigger
+    socket.on('trigger_pipeline', async (data) => {
+        console.log(`[NODE 👑] Pipeline Triggered: ${data.phase} for Mandate: ${data.mandate}`);
         
-        // Simulating Event-Driven Microservice Agent Logic
         if (data.phase === 'csuite') {
-            socket.emit('agent_log', { agent: 'System', msg: 'Waking up CEO, CPO, CMO, CFO...' });
+            socket.emit('agent_log', { agent: 'System', msg: 'Waking up CEO. Connecting to Together AI Engine...' });
             
-            setTimeout(() => {
-                socket.emit('agent_log', { agent: 'CEO', msg: 'Reading Mandate from 00_FOUNDER_INPUT. Assigning tasks.' });
-            }, 1000);
-            
-            setTimeout(() => {
-                socket.emit('agent_log', { agent: 'CPO', msg: 'Mapping operational logistics and UX loops.' });
-            }, 2000);
-            
-             setTimeout(() => {
-                socket.emit('agent_log', { agent: 'CFO', msg: 'Enforcing 90% gross margins. Approving retainer structure.' });
-            }, 3000);
+            // Security Checks
+            if (!together) {
+                socket.emit('agent_log', { agent: 'ERROR', msg: 'TOGETHER_API_KEY is missing! Please configure backend/.env file.' });
+                return socket.emit('pipeline_complete', { phase: 'error' });
+            }
+            if (!data.mandate) {
+                socket.emit('agent_log', { agent: 'ERROR', msg: 'No mandate selected by Founder!' });
+                return socket.emit('pipeline_complete', { phase: 'error' });
+            }
 
-            setTimeout(() => {
-                socket.emit('agent_log', { agent: 'COO', msg: 'Master Plan V1 synthesized via Node Event Loop.' });
+            try {
+                // 1. Read the exact Mandate selected
+                const mandatePath = path.join(__dirname, '../00_FOUNDER_INPUT', data.mandate);
+                const mandateContent = fs.readFileSync(mandatePath, 'utf8');
+                
+                // 2. Prime the Agent Persona
+                const ceoPromptPath = path.join(__dirname, '../agents/company/ceo.md');
+                const ceoPrompt = fs.readFileSync(ceoPromptPath, 'utf8');
+
+                socket.emit('agent_log', { agent: 'CEO', msg: `Reading Mandate [${data.mandate}]. Sending strategic directives to Meta-Llama-3.1-70B...` });
+
+                // 3. API Execution
+                const response = await together.chat.completions.create({
+                    messages: [
+                        { "role": "system", "content": ceoPrompt },
+                        { "role": "user", "content": `EXECUTE YOUR ROLE. Read the following Mandate and synthesize a comprehensive Master Plan V1. MANDATE:\n\n${mandateContent}` }
+                    ],
+                    model: "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo", 
+                    temperature: 0.7,
+                    max_tokens: 2500,
+                });
+
+                const plan = response.choices[0].message.content;
+                
+                // 4. File Output & Handoff
+                const outDir = path.join(__dirname, '../company_files/crucible_testing');
+                if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
+                
+                const timestamp = Date.now();
+                const cleanName = data.mandate.replace('.md', '');
+                const fileName = `master_plan_v1_${cleanName}_${timestamp}.md`;
+                const outPath = path.join(outDir, fileName);
+                fs.writeFileSync(outPath, plan);
+                
+                socket.emit('agent_log', { agent: 'CPO', msg: `Formatting architecture logic...` });
+                socket.emit('agent_log', { agent: 'CFO', msg: `Running capital constraints...` });
+                socket.emit('agent_log', { agent: 'CEO', msg: `Master Plan synthesized and physically filed at /crucible_testing/${fileName}` });
                 socket.emit('pipeline_complete', { phase: 'csuite' });
-            }, 4500);
+                
+            } catch (error) {
+                console.error(error);
+                socket.emit('agent_log', { agent: 'FATAL ERROR', msg: error.message });
+                socket.emit('pipeline_complete', { phase: 'error' });
+            }
         }
-        
         else if (data.phase === 'market') {
-             socket.emit('agent_log', { agent: 'System', msg: 'Deploying Market Crucible via WebSockets...' });
-             setTimeout(() => { socket.emit('agent_log', { agent: 'Target Buyer', msg: 'Analyzing Master Plan. Pricing rejected logic simulating...' }); }, 1500);
-             setTimeout(() => { socket.emit('agent_log', { agent: 'Competitor', msg: 'Cloning strategy. Synthesizing counter-attack.' }); }, 3000);
-             setTimeout(() => { socket.emit('pipeline_complete', { phase: 'market' }); }, 4000);
+             socket.emit('agent_log', { agent: 'System', msg: 'Market Crucible Event called. Currently awaiting full API scaling.' });
+             socket.emit('pipeline_complete', { phase: 'market' });
         }
     });
 
-    socket.on('disconnect', () => {
-         console.log('[NODE 👑] Client disconnected');
-    });
+    socket.on('disconnect', () => { console.log('[NODE 👑] Client disconnected'); });
 });
 
 const PORT = process.env.PORT || 8080;

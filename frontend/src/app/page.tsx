@@ -5,6 +5,7 @@ import io from 'socket.io-client';
 export default function Home() {
   const [logs, setLogs] = useState<{agent: string, msg: string}[]>([]);
   const [mandates, setMandates] = useState<string[]>([]);
+  const [activeMandate, setActiveMandate] = useState<string>('');
   const [isConnected, setIsConnected] = useState(false);
   const [socket, setSocket] = useState<any>(null);
 
@@ -22,6 +23,7 @@ export default function Home() {
 
     newSocket.on('mandates_list', (data) => {
       setMandates(data);
+      if (data.length > 0) setActiveMandate(data[0]);
     });
 
     newSocket.on('agent_log', (data) => {
@@ -36,7 +38,7 @@ export default function Home() {
   }, []);
 
   const triggerPipeline = (phase: string) => {
-    if (socket) socket.emit('trigger_pipeline', { phase });
+    if (socket) socket.emit('trigger_pipeline', { phase, mandate: activeMandate });
   };
 
   return (
@@ -60,8 +62,8 @@ export default function Home() {
             
             <div className="mb-6">
                 <label className="text-xs text-gray-400 block mb-2 font-bold uppercase">Active Mandate</label>
-                <select className="w-full bg-[#1A1A1A] border border-gray-700 p-2 text-sm outline-none focus:border-[#D4AF37] text-gray-300">
-                    {mandates.length > 0 ? mandates.map((m, i) => <option key={i}>{m}</option>) : <option>No Mandates Found</option>}
+                <select value={activeMandate} onChange={(e) => setActiveMandate(e.target.value)} className="w-full bg-[#1A1A1A] border border-gray-700 p-2 text-sm outline-none focus:border-[#D4AF37] text-gray-300">
+                    {mandates.length > 0 ? mandates.map((m, i) => <option key={i} value={m}>{m}</option>) : <option value="">No Mandates Found</option>}
                 </select>
             </div>
 

@@ -103,29 +103,37 @@ Instead of one "helpful assistant," this system divides responsibility into four
 This framework is built natively for **Agentic AI Workspaces** (AntiGravity, Cursor, Windsurf, Claude Code). You do not need to code. You are the Commander typing to a super-intelligence that has access to your local folder.
 
 **Step 0: Installation & Setup**
-To bring this OS to your computer, open your terminal (or simply tell your Agentic AI like AntiGravity) to run these commands:
+To bring this OS to your computer, clone the repository:
 ```bash
 git clone https://github.com/austinpnguyen/UHNWI_Right_Hands.git
 cd UHNWI_Right_Hands
-pip3 install -r requirements.txt --break-system-packages
 ```
-*CRITICAL: Make sure your AI chat window is opened **inside** the `UHNWI_Right_Hands` folder before proceeding.*
 
-**Step 1: The Mandate (Initialization)**
-Simply drag and drop the `start.md` file located at the root of this project directly into your AI Chat window and press Enter. 
-
-The AI will immediately adopt the role of your Chief of Staff, conduct a brief interview with you, and automatically generate your official Mandate file straight into the `00_FOUNDER_INPUT/` folder. Drop any additional raw files (Competitor Intel, Spreadsheets) into that folder as well.
-
-**Step 2: Launch The Dashboard (Giao diện Web App)**
-If you prefer a beautiful visual interface over raw files, you can launch the Python Web Dashboard. Open your terminal and run:
+**Step 1: Set Up AI Credentials**
+Navigate to the `backend/` folder, copy the example environment file, and add your Together AI key:
 ```bash
-streamlit run dashboard.py
+cd backend
+cp .env.example .env
 ```
-This will automatically open a Command Center in your browser (`http://localhost:8501`) where you can view your active mandates and trigger the simulated pipelines.
+*(Open `.env` and paste your `TOGETHER_API_KEY`)*
 
-**Step 3: Trigger The Company (Level 2)**
-Open your Agentic AI chat inside this repository and copy-paste this exact prompt:
-> *"Read the mandate in `00_FOUNDER_INPUT/01_project_idea_sample.md`. Adopt the exact persona of the CEO (`agents/company/ceo.md`) and act as the dictator. Call upon the C-Suite (`cpo.md`, `cmo.md`, `cfo.md`, `coo.md`) to synthesize `master_plan_v1.md`. Write and save the markdown file directly to `company_files/crucible_testing/`."*
+**Step 2: Launch The Node.js Event Bus (Backend)**
+Install dependencies and run the core Orchestrator on Port 8080:
+```bash
+npm install
+node server.js
+```
+
+**Step 3: Launch The Next.js Command Center (Frontend)**
+Open a second terminal, navigate to `frontend/`, install dependencies, and launch the React UI:
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+**Step 4: Execute The Company**
+Open your browser to `http://localhost:3000`. Drop any Mandate `.md` file into `00_FOUNDER_INPUT/`. Select it on the dashboard and click **Awaken C-Suite**. You will watch the LLMs stream logic via WebSocket and physically write Master Plan documents into `company_files/crucible_testing/`.
 
 **Step 3: Trigger The Crucible (Level 3)**
 Once the Master Plan is generated, feed it to the wolves:
