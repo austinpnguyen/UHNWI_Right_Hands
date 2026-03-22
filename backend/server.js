@@ -59,8 +59,10 @@ io.on('connection', (socket) => {
 
                 socket.emit('agent_log', { agent: 'CEO', msg: `Reading Mandate [${data.mandate}]. Sending strategic directives to Meta-Llama-3.1-70B...` });
 
-                // 3. API Execution
-                const response = await together.chat.completions.create({
+                // 3. API Execution (Streaming Mode)
+                socket.emit('agent_active', { agent: 'CEO' });
+                
+                const runner = await together.chat.completions.create({
                     messages: [
                         { "role": "system", "content": ceoPrompt },
                         { "role": "user", "content": `EXECUTE YOUR ROLE. Read the following Mandate and synthesize a comprehensive Master Plan V1. MANDATE:\n\n${mandateContent}` }
@@ -68,9 +70,15 @@ io.on('connection', (socket) => {
                     model: "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo", 
                     temperature: 0.7,
                     max_tokens: 2500,
+                    stream: true
                 });
 
-                const plan = response.choices[0].message.content;
+                let plan = "";
+                for await (const chunk of runner) {
+                    const token = chunk.choices[0]?.delta?.content || "";
+                    plan += token;
+                    socket.emit('agent_stream', { agent: 'CEO', chunk: token });
+                }
                 
                 // 4. File Output & Handoff
                 const outDir = path.join(__dirname, '../company_files/crucible_testing');
@@ -82,9 +90,8 @@ io.on('connection', (socket) => {
                 const outPath = path.join(outDir, fileName);
                 fs.writeFileSync(outPath, plan);
                 
-                socket.emit('agent_log', { agent: 'CPO', msg: `Formatting architecture logic...` });
-                socket.emit('agent_log', { agent: 'CFO', msg: `Running capital constraints...` });
-                socket.emit('agent_log', { agent: 'CEO', msg: `Master Plan synthesized and physically filed at /crucible_testing/${fileName}` });
+                socket.emit('agent_log', { agent: 'System', msg: `CEO Master Plan synthesized and filed at /crucible_testing/${fileName}` });
+                socket.emit('agent_active', { agent: null });
                 socket.emit('pipeline_complete', { phase: 'csuite' });
                 
             } catch (error) {
