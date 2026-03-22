@@ -57,7 +57,7 @@ io.on('connection', (socket) => {
                 const ceoPromptPath = path.join(__dirname, '../agents/company/ceo.md');
                 const ceoPrompt = fs.readFileSync(ceoPromptPath, 'utf8');
 
-                socket.emit('agent_log', { agent: 'CEO', msg: `Reading Mandate [${data.mandate}]. Sending strategic directives to Meta-Llama-3.1-70B...` });
+                socket.emit('agent_log', { agent: 'CEO', msg: `Reading Mandate [${data.mandate}]. Sending strategic directives to Meta-Llama-3.1-8B...` });
 
                 // 3. API Execution (Streaming Mode)
                 socket.emit('agent_active', { agent: 'CEO' });
@@ -67,7 +67,7 @@ io.on('connection', (socket) => {
                         { "role": "system", "content": ceoPrompt },
                         { "role": "user", "content": `EXECUTE YOUR ROLE. Read the following Mandate and synthesize a comprehensive Master Plan V1. MANDATE:\n\n${mandateContent}` }
                     ],
-                    model: "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo", 
+                    model: "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo", 
                     temperature: 0.7,
                     max_tokens: 2500,
                     stream: true
