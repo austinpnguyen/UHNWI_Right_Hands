@@ -120,7 +120,8 @@ cp .env.example .env
 **Step 2: Launch The Node.js Event Bus (Backend)**
 Install dependencies and run the core Orchestrator on Port 8080:
 ```bash
-npm install
+cd backend
+npm install express socket.io cors together-ai dotenv
 node server.js
 ```
 
