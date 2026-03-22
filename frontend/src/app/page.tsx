@@ -120,7 +120,17 @@ export default function Home() {
             
             {/* SYSTEM LOGS */}
             <div className="mt-8 border-t border-gray-800 pt-4">
-                <h3 className="text-xs text-gray-500 font-bold mb-2 uppercase">System Logs</h3>
+                <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-xs text-gray-500 font-bold uppercase">System Logs</h3>
+                    <button 
+                        onClick={() => {
+                            navigator.clipboard.writeText(logs.map(l => `[${l.agent}] ${l.msg}`).join('\n'));
+                            alert("System Logs copied sequentially to clipboard!");
+                        }}
+                        className="text-[10px] bg-[#1A1A1A] border border-gray-700 hover:border-[#D4AF37] hover:text-[#D4AF37] px-2 py-1 transition-colors text-gray-400 rounded-sm">
+                        📋 COPY LOGS
+                    </button>
+                </div>
                 <div className="h-64 overflow-y-auto bg-[#000] border border-gray-800 p-3 text-xs space-y-2">
                     {logs.map((log, idx) => (
                         <div key={idx} className={`${log.agent === 'ERROR' || log.agent === 'FATAL ERROR' ? 'text-red-500' : 'text-gray-400'}`}>

@@ -67,7 +67,7 @@ io.on('connection', (socket) => {
                         { "role": "system", "content": ceoPrompt },
                         { "role": "user", "content": `EXECUTE YOUR ROLE. Read the following Mandate and synthesize a comprehensive Master Plan V1. MANDATE:\n\n${mandateContent}` }
                     ],
-                    model: "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo", 
+                    model: "meta-llama/Meta-Llama-3.1-8B-Instruct", 
                     temperature: 0.7,
                     max_tokens: 2500,
                     stream: true
