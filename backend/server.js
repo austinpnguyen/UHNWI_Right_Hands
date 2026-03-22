@@ -20,10 +20,13 @@ const storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, INPUT_DIR),
     filename: (req, file, cb) => cb(null, file.originalname)
 });
-const upload = multer({ storage, fileFilter: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    cb(null, ['.md', '.txt'].includes(ext));
-}});
+const upload = multer({
+    storage,
+    fileFilter: (req, file, cb) => {
+        const ext = path.extname(file.originalname).toLowerCase();
+        cb(null, ['.md', '.txt'].includes(ext));
+    }
+});
 
 app.post('/upload', upload.single('mandate'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No valid file provided (.md or .txt only)' });
@@ -38,129 +41,133 @@ const io = new Server(server, {
 const together = new Together({ apiKey: process.env.TOGETHER_API_KEY });
 const COMPANY_MODEL = "ServiceNow-AI/Apriel-1.6-15b-Thinker";
 
+// --- Helper: stream a single agent's LLM call and write the result file ---
+async function runAgent({ socket, agentKey, systemPromptPath, userMessage, outputPath }) {
+    const systemPrompt = fs.readFileSync(systemPromptPath, 'utf8');
+
+    socket.emit('agent_log', { agent: agentKey, msg: `[${agentKey}] Starting via ${COMPANY_MODEL}...` });
+    socket.emit('agent_active', { agent: agentKey, active: true });
+
+    const runner = await together.chat.completions.create({
+        messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user",   content: userMessage }
+        ],
+        model: COMPANY_MODEL,
+        temperature: 0.6,
+        max_tokens: 2500,
+        stream: true
+    });
+
+    let output = "";
+    for await (const chunk of runner) {
+        const token = chunk.choices[0]?.delta?.content || "";
+        output += token;
+        socket.emit('agent_stream', { agent: agentKey, chunk: token });
+    }
+
+    // Write result file
+    const outDir = path.dirname(outputPath);
+    if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
+    fs.writeFileSync(outputPath, output);
+
+    socket.emit('agent_log',   { agent: agentKey, msg: `[${agentKey}] Complete -> ${path.basename(outputPath)}` });
+    socket.emit('agent_active', { agent: agentKey, active: false });
+
+    return output;
+}
+
+// --- Socket Event Bus ---
 io.on('connection', (socket) => {
-    console.log('[NODE 👑] Client connected to UHNWI+ Event Bus');
+    console.log('[NODE] Client connected to UHNWI+ Event Bus');
 
     socket.on('get_mandates', () => {
-        const inputDir = path.join(__dirname, '../00_FOUNDER_INPUT');
-        if (!fs.existsSync(inputDir)) fs.mkdirSync(inputDir, { recursive: true });
-        
-        const files = fs.readdirSync(inputDir).filter(f => f.endsWith('.md'));
+        const files = fs.readdirSync(INPUT_DIR).filter(f => /\.(md|txt)$/.test(f));
         socket.emit('mandates_list', files);
     });
 
     socket.on('trigger_pipeline', async (data) => {
-        console.log(`[NODE 👑] Pipeline Triggered: ${data.phase}`);
         if (!data.mandate) return;
+        console.log(`[NODE] Pipeline triggered: ${data.phase} / ${data.mandate}`);
+
+        const mandatePath     = path.join(INPUT_DIR, data.mandate);
+        const outDir          = path.join(__dirname, '../company_files/crucible_testing');
+        const cleanName       = data.mandate.replace(/\.(md|txt)$/, '');
+        const ts              = Date.now();
 
         try {
-            if (data.phase === 'csuite') {
-                const mandatePath = path.join(__dirname, '../00_FOUNDER_INPUT', data.mandate);
-                const mandateContent = fs.readFileSync(mandatePath, 'utf8');
+            // ------------------------------------------------------------------
+            // PHASE 1: CEO — synthesizes the master plan (all other agents wait)
+            // ------------------------------------------------------------------
+            const ceoPlan = await runAgent({
+                socket,
+                agentKey: 'CEO',
+                systemPromptPath: path.join(__dirname, '../agents/company/ceo.md'),
+                userMessage: `EXECUTE YOUR ROLE. Synthesize a Master Plan V1 from the Founder's Mandate below.\n\nMANDATE:\n${fs.readFileSync(mandatePath, 'utf8')}`,
+                outputPath: path.join(outDir, `master_plan_v1_${cleanName}_${ts}.md`)
+            });
 
-                const outDir = path.join(__dirname, '../company_files/crucible_testing');
-                if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
-                const cleanName = data.mandate.replace('.md', '');
-                const timestamp = Date.now();
+            socket.emit('agent_log', { agent: 'System', msg: 'CEO complete. Dispatching C-Suite in parallel...' });
 
-                // ---------------------------------------------------------
-                // 1. CEO PHASE : MASTER PLAN
-                // ---------------------------------------------------------
-                const ceoPrompt = fs.readFileSync(path.join(__dirname, '../agents/company/ceo.md'), 'utf8');
-                socket.emit('agent_log', { agent: 'CEO', msg: `Reading Mandate [${data.mandate}]. Synthesizing Master Plan via ${COMPANY_MODEL}...` });
-                socket.emit('agent_active', { agent: 'CEO' });
-                
-                const ceoRunner = await together.chat.completions.create({
-                    messages: [
-                        { "role": "system", "content": ceoPrompt },
-                        { "role": "user", "content": `EXECUTE YOUR ROLE. Read the following Mandate and synthesize a comprehensive Master Plan V1. MANDATE:\n\n${mandateContent}` }
-                    ],
-                    model: COMPANY_MODEL, temperature: 0.7, max_tokens: 2500, stream: true
-                });
+            // ------------------------------------------------------------------
+            // PHASE 2: CPO + CFO + CMO + COO run concurrently with Promise.all.
+            // Each agent receives the mandate AND the CEO master plan.
+            // ------------------------------------------------------------------
+            const mandateContent = fs.readFileSync(mandatePath, 'utf8');
+            const sharedContext  = `MANDATE:\n${mandateContent}\n\nCEO MASTER PLAN:\n${ceoPlan}`;
 
-                let ceoPlan = "";
-                for await (const chunk of ceoRunner) {
-                    const token = chunk.choices[0]?.delta?.content || "";
-                    ceoPlan += token;
-                    socket.emit('agent_stream', { agent: 'CEO', chunk: token });
-                }
-                
-                const ceoOutPath = path.join(outDir, `master_plan_v1_${cleanName}_${timestamp}.md`);
-                fs.writeFileSync(ceoOutPath, ceoPlan);
-                socket.emit('agent_log', { agent: 'System', msg: `CEO Master Plan synthesized -> ${ceoOutPath}` });
+            await Promise.all([
 
-                // ---------------------------------------------------------
-                // 2. CPO PHASE : ARCHITECTURE 
-                // ---------------------------------------------------------
-                const cpoPrompt = fs.readFileSync(path.join(__dirname, '../agents/company/cpo.md'), 'utf8');
-                socket.emit('agent_log', { agent: 'CPO', msg: `Received CEO Master Plan. Engineering System Architecture...` });
-                socket.emit('agent_active', { agent: 'CPO' });
+                runAgent({
+                    socket,
+                    agentKey: 'CPO',
+                    systemPromptPath: path.join(__dirname, '../agents/company/cpo.md'),
+                    userMessage: `EXECUTE YOUR ROLE. Design the full product architecture based on the context below.\n\n${sharedContext}`,
+                    outputPath: path.join(outDir, `architecture_${cleanName}_${ts}.md`)
+                }),
 
-                const cpoRunner = await together.chat.completions.create({
-                    messages: [
-                        { "role": "system", "content": cpoPrompt },
-                        { "role": "user", "content": `EXECUTE YOUR ROLE. Based on the Founder's Mandate and the CEO's Master Plan, design the complete product architecture.\n\nMANDATE:\n${mandateContent}\n\nCEO MASTER PLAN:\n${ceoPlan}` }
-                    ],
-                    model: COMPANY_MODEL, temperature: 0.5, max_tokens: 2500, stream: true
-                });
+                runAgent({
+                    socket,
+                    agentKey: 'CFO',
+                    systemPromptPath: path.join(__dirname, '../agents/company/cfo.md'),
+                    userMessage: `EXECUTE YOUR ROLE. Produce a brutal financial constraint model and path to profitability.\n\n${sharedContext}`,
+                    outputPath: path.join(outDir, `financial_model_${cleanName}_${ts}.md`)
+                }),
 
-                let cpoPlan = "";
-                for await (const chunk of cpoRunner) {
-                    const token = chunk.choices[0]?.delta?.content || "";
-                    cpoPlan += token;
-                    socket.emit('agent_stream', { agent: 'CPO', chunk: token });
-                }
+                runAgent({
+                    socket,
+                    agentKey: 'CMO',
+                    systemPromptPath: path.join(__dirname, '../agents/company/cmo.md'),
+                    userMessage: `EXECUTE YOUR ROLE. Design the complete go-to-market and brand strategy.\n\n${sharedContext}`,
+                    outputPath: path.join(outDir, `gtm_strategy_${cleanName}_${ts}.md`)
+                }),
 
-                const cpoOutPath = path.join(outDir, `architecture_plan_${cleanName}_${timestamp}.md`);
-                fs.writeFileSync(cpoOutPath, cpoPlan);
-                socket.emit('agent_log', { agent: 'System', msg: `CPO Architecture defined -> ${cpoOutPath}` });
+                runAgent({
+                    socket,
+                    agentKey: 'COO',
+                    systemPromptPath: path.join(__dirname, '../agents/company/coo.md'),
+                    userMessage: `EXECUTE YOUR ROLE. Map out the full operational execution framework.\n\n${sharedContext}`,
+                    outputPath: path.join(outDir, `ops_framework_${cleanName}_${ts}.md`)
+                }),
 
-                // ---------------------------------------------------------
-                // 3. CFO PHASE : FINANCIALS
-                // ---------------------------------------------------------
-                const cfoPrompt = fs.readFileSync(path.join(__dirname, '../agents/company/cfo.md'), 'utf8');
-                socket.emit('agent_log', { agent: 'CFO', msg: `Received CPO Architecture. Modeling Fiscal Constraints...` });
-                socket.emit('agent_active', { agent: 'CFO' });
+            ]);
 
-                const cfoRunner = await together.chat.completions.create({
-                    messages: [
-                        { "role": "system", "content": cfoPrompt },
-                        { "role": "user", "content": `EXECUTE YOUR ROLE. Analyze the mandate, master plan, and architecture. Produce a brutal financial constraint model and path to profitability.\n\nARCHITECTURE:\n${cpoPlan}\n\nCEO MASTER PLAN:\n${ceoPlan}` }
-                    ],
-                    model: COMPANY_MODEL, temperature: 0.3, max_tokens: 2500, stream: true
-                });
+            socket.emit('agent_log',        { agent: 'System', msg: `Pipeline [${data.phase.toUpperCase()}] complete. All C-Suite reports filed.` });
+            socket.emit('pipeline_complete', { phase: data.phase });
 
-                let cfoPlan = "";
-                for await (const chunk of cfoRunner) {
-                    const token = chunk.choices[0]?.delta?.content || "";
-                    cfoPlan += token;
-                    socket.emit('agent_stream', { agent: 'CFO', chunk: token });
-                }
-
-                const cfoOutPath = path.join(outDir, `financial_model_${cleanName}_${timestamp}.md`);
-                fs.writeFileSync(cfoOutPath, cfoPlan);
-                socket.emit('agent_log', { agent: 'System', msg: `CFO Financials mapped -> ${cfoOutPath}` });
-
-                // ---------------------------------------------------------
-                // COMPLETION
-                // ---------------------------------------------------------
-                socket.emit('agent_active', { agent: null });
-                socket.emit('pipeline_complete', { phase: 'csuite' });
-                
-            }
-        } catch (error) {
-            console.error(error);
-            socket.emit('agent_active', { agent: null });
-            socket.emit('agent_log', { agent: 'FATAL ERROR', msg: error.message });
+        } catch (err) {
+            console.error('[NODE] Pipeline error:', err.message);
+            socket.emit('agent_log',  { agent: 'FATAL ERROR', msg: err.message });
+            socket.emit('pipeline_complete', { phase: 'error' });
         }
     });
 
     socket.on('disconnect', () => {
-        console.log('[NODE 👑] Client disconnected');
+        console.log('[NODE] Client disconnected');
     });
 });
 
 const PORT = process.env.PORT || 8080;
 server.listen(PORT, () => {
-    console.log(`\n[🚀] Dynasty OS Backend running asynchronously on port ${PORT}`);
+    console.log(`\n[SYSTEM] Dynasty OS Backend running on port ${PORT}`);
 });
