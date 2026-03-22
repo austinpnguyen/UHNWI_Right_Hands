@@ -102,6 +102,14 @@ Instead of one "helpful assistant," this system divides responsibility into four
 ## 🚀 How to Run This OS (The Default Method)
 This framework is built natively for **Agentic AI Workspaces** (AntiGravity, Cursor, Windsurf, Claude Code). You do not need to code. You are the Commander typing to a super-intelligence that has access to your local folder.
 
+**Step 0: Installation & Setup**
+To bring this OS to your computer, open your terminal (or simply tell your Agentic AI like AntiGravity) to run these commands:
+```bash
+git clone https://github.com/austinpnguyen/UHNWI_Right_Hands.git
+cd UHNWI_Right_Hands
+```
+*CRITICAL: Make sure your AI chat window is opened **inside** the `UHNWI_Right_Hands` folder before proceeding to Step 1.*
+
 **Step 1: The Mandate (Initialization)**
 Simply drag and drop the `start.md` file located at the root of this project directly into your AI Chat window and press Enter. 
 
