@@ -99,16 +99,25 @@ Instead of one "helpful assistant," this system divides responsibility into four
 - `auditor.md`: An emotionless polygraph that catches the CEO if they lie about Market testing.
 - `clo.md` (Chief Legal Officer): Vetoes campaigns that risk lawsuits or FTC violations.
 
-## 🚀 How to Run This OS
-All agents are strictly controlled by heavily engineered 15-point Persona Prompts (found in `docs/AGENT-GUIDELINE.md`).
-They pass structured documents to each other locally via the `company_files/` folder to eliminate AI hallucination.
+## 🚀 How to Run This OS (The Default Method)
+This framework is built natively for **Agentic AI Workspaces** (AntiGravity, Cursor, Windsurf, Claude Code). You do not need to code. You are the Commander typing to a super-intelligence that has access to your local folder.
 
-1. **Start the Engine**: Drop your ideas/reports into `00_FOUNDER_INPUT/01_project_idea_sample.md` and pass it to the **Chief of Staff (CoS)** or **CEO**.
-2. **Watch the Crucible**: The CEO coordinates the Master Plan, pushes it to The Market, and iterates until the Target Buyer clicks "BUY".
-3. **Approve Final**: The CoS presents the final, mathematically audited plan to you for capital wire approval.
+**Step 1: The Mandate**
+Drop your raw ideas, financial data, and intelligence into `00_FOUNDER_INPUT/`. 
 
-## 🐍 Background Python Orchestration & AntiGravity Support
-This OS is designed to be 100% platform-agnostic. We use pure Python and `Makefile` standards rather than locking you into specific AI terminal tools.
+**Step 2: Trigger The Company (Level 2)**
+Open your Agentic AI chat inside this repository and copy-paste this exact prompt:
+> *"Read the mandate in `00_FOUNDER_INPUT/01_project_idea_sample.md`. Adopt the exact persona of the CEO (`agents/company/ceo.md`) and act as the dictator. Call upon the C-Suite (`cpo.md`, `cmo.md`, `cfo.md`, `coo.md`) to synthesize `master_plan_v1.md`. Write and save the markdown file directly to `company_files/crucible_testing/`."*
+
+**Step 3: Trigger The Crucible (Level 3)**
+Once the Master Plan is generated, feed it to the wolves:
+> *"Adopt the personas of The Market (`agents/market/`). Brutally attack the `master_plan_v1.md` file you just generated. Do not hold back. You are a skeptical rich buyer and a ruthless competitor. Save the psychological, legal, and pricing failures to `company_files/feedback_logs/market_rejections.md`."*
+
+**Step 4: The Shield / Audit (Level 4)**
+> *"Adopt the personas of The Shield (`agents/shield/`). Audit the market feedback. Evaluate if the Founder should execute this or kill it. Present your final Boolean verdict to the Founder."*
+
+## 🐍 Headless Python Orchestration (Custom API Integration)
+If you are a developer and wish to run the agents autonomously in the background without a chat interface, we provide a Python Orchestration skeleton.
 
 If you are using **AntiGravity** or wish to run the agents autonomously in the background, you can trigger the Python Orchestration Engine from your terminal:
 - `make run-csuite`: Wakes up the C-Suite to construct the Master Plan.
