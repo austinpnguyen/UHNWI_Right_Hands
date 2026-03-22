@@ -107,7 +107,7 @@ To bring this OS to your computer, open your terminal (or simply tell your Agent
 ```bash
 git clone https://github.com/austinpnguyen/UHNWI_Right_Hands.git
 cd UHNWI_Right_Hands
-pip install -r requirements.txt
+pip3 install -r requirements.txt --break-system-packages
 ```
 *CRITICAL: Make sure your AI chat window is opened **inside** the `UHNWI_Right_Hands` folder before proceeding.*
 
