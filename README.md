@@ -1,11 +1,11 @@
-# UHNWI+ Dynasty OS (AI Enterprise Framework)
+# 👑 UHNWI+ Dynasty OS (AI Enterprise Framework)
 
 Welcome to the **UHNWI+ Dynasty OS**. 
 This is the ultimate, extreme-friction execution engine designed not just to launch a business, but to manage an entire Ultra High Net Worth (UHNWI) empire.
 
 If an AI just agrees with everything you say, it cannot build a $100M+ enterprise. This architecture forces every idea through a brutally critical ecosystem before it ever hits the real world.
 
-## The 4-Tier Dynasty Architecture
+## 🏛️ The 4-Tier Dynasty Architecture
 
 ### System Flow & Reporting Map
 ```text
@@ -71,7 +71,7 @@ If an AI just agrees with everything you say, it cannot build a $100M+ enterpris
 
 Instead of one "helpful assistant," this system divides responsibility into four deeply adversarial but highly functional factions:
 
-### 1. THE INNER CIRCLE (The Family Office)
+### 🏛️ 1. THE INNER CIRCLE (The Family Office)
 *The elite core that protects the Founder's time, wealth, and life.*
 - `cos.md` (Chief of Staff): The Gatekeeper. Protects the Founder's bandwidth.
 - `cio.md` (Chief Investment Officer): Manages the macro portfolio and generational wealth.
@@ -79,7 +79,7 @@ Instead of one "helpful assistant," this system divides responsibility into four
 - `whisperer.md` (The Mentor): The only person allowed to tell the Founder they are wrong.
 - `ciso.md` (Head of Security): Protects physical assets and digital OpSec.
 
-### 2. THE COMPANY (The Builders)
+### ⚙️ 2. THE COMPANY (The Builders)
 *The corporate C-Suite that actually builds the product and marketing.*
 - `ceo.md`: The dictator of operations. Orchestrates the C-Suite.
 - `cpo.md`: Builds the product architecture and customer experience.
@@ -87,19 +87,19 @@ Instead of one "helpful assistant," this system divides responsibility into four
 - `cfo.md`: Enforces unit economics (60% margins, 3:1 LTV/CAC ratios).
 - `coo.md`: Enforces the 3-Day sprint timeline.
 
-### 3. THE MARKET (The Crucible)
+### ⚔️ 3. THE MARKET (The Crucible)
 *The external world that brutally attacks the Company's output.*
 - `target_buyer.md`: Highly skeptical buyer who protects their credit card.
 - `unaware_audience.md`: Goldfish attention span. Discards boring ad hooks.
 - `competitor_simulator.md`: Tries to clone the product and bankrupt the Company.
 - `market_analyst.md`: Predicts PR disasters and brand dilution.
 
-### 4. THE SHIELD (The Independent Audit)
+### 🛡️ 4. THE SHIELD (The Independent Audit)
 *Independent validators reporting straight to the Founder.*
 - `auditor.md`: An emotionless polygraph that catches the CEO if they lie about Market testing.
 - `clo.md` (Chief Legal Officer): Vetoes campaigns that risk lawsuits or FTC violations.
 
-## How to Run This OS
+## 🚀 How to Run This OS
 All agents are strictly controlled by heavily engineered 15-point Persona Prompts (found in `docs/AGENT-GUIDELINE.md`).
 They pass structured documents to each other locally via the `company_files/` folder to eliminate AI hallucination.
 
@@ -107,7 +107,7 @@ They pass structured documents to each other locally via the `company_files/` fo
 2. **Watch the Crucible**: The CEO coordinates the Master Plan, pushes it to The Market, and iterates until the Target Buyer clicks "BUY".
 3. **Approve Final**: The CoS presents the final, mathematically audited plan to you for capital wire approval.
 
-## Background Python Orchestration & AntiGravity Support
+## 🐍 Background Python Orchestration & AntiGravity Support
 This OS is designed to be 100% platform-agnostic. We use pure Python and `Makefile` standards rather than locking you into specific AI terminal tools.
 
 If you are using **AntiGravity** or wish to run the agents autonomously in the background, you can trigger the Python Orchestration Engine from your terminal:
@@ -116,3 +116,13 @@ If you are using **AntiGravity** or wish to run the agents autonomously in the b
 - `make run-audit`: Deploys The Shield to review the feedback logs.
 - `make run-all`: Executes the entire pipeline synchronously.
 - `make daemon`: Runs the Python Engine indefinitely in the background, waiting for new mandates in `00_FOUNDER_INPUT/` to execute asynchronously while interacting with the AntiGravity service.
+
+### ⚠️ Troubleshooting: macOS Xcode License Error
+If you run `make run-all` (or any Python script) on Mac and receive an error regarding Xcode:
+> *You have not agreed to the Xcode and Apple SDKs license.*
+
+Simply run this command in your terminal to accept Apple's license agreement:
+```bash
+sudo xcodebuild -license accept
+```
+*(Enter your Mac password blindly when prompted, then press Enter).*
