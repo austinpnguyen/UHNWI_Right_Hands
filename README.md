@@ -102,8 +102,12 @@ Instead of one "helpful assistant," this system divides responsibility into four
 ## 🚀 How to Run This OS (The Default Method)
 This framework is built natively for **Agentic AI Workspaces** (AntiGravity, Cursor, Windsurf, Claude Code). You do not need to code. You are the Commander typing to a super-intelligence that has access to your local folder.
 
-**Step 1: The Mandate**
-Drop your raw ideas, financial data, and intelligence into `00_FOUNDER_INPUT/`. 
+**Step 1: The Mandate (Initialization)**
+Run the interactive Founder interface from your terminal:
+```bash
+python3 start.py
+```
+This wizard will ask you questions about your project, budget, and demographic, and automatically generate your official Mandate file into `00_FOUNDER_INPUT/`. Drop any additional raw files (Competitor Intel, Spreadsheets) into that folder.
 
 **Step 2: Trigger The Company (Level 2)**
 Open your Agentic AI chat inside this repository and copy-paste this exact prompt:
