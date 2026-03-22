@@ -5,10 +5,30 @@ const { Server } = require("socket.io");
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
+const multer = require('multer');
 const Together = require('together-ai');
 
 const app = express();
 app.use(cors());
+app.use(express.json());
+
+// --- File Upload ---
+const INPUT_DIR = path.join(__dirname, '../00_FOUNDER_INPUT');
+if (!fs.existsSync(INPUT_DIR)) fs.mkdirSync(INPUT_DIR, { recursive: true });
+
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, INPUT_DIR),
+    filename: (req, file, cb) => cb(null, file.originalname)
+});
+const upload = multer({ storage, fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, ['.md', '.txt'].includes(ext));
+}});
+
+app.post('/upload', upload.single('mandate'), (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'No valid file provided (.md or .txt only)' });
+    res.json({ filename: req.file.originalname });
+});
 
 const server = http.createServer(app);
 const io = new Server(server, {
