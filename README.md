@@ -103,11 +103,9 @@ Instead of one "helpful assistant," this system divides responsibility into four
 This framework is built natively for **Agentic AI Workspaces** (AntiGravity, Cursor, Windsurf, Claude Code). You do not need to code. You are the Commander typing to a super-intelligence that has access to your local folder.
 
 **Step 1: The Mandate (Initialization)**
-Run the interactive Founder interface from your terminal:
-```bash
-python3 start.py
-```
-This wizard will ask you questions about your project, budget, and demographic, and automatically generate your official Mandate file into `00_FOUNDER_INPUT/`. Drop any additional raw files (Competitor Intel, Spreadsheets) into that folder.
+Simply drag and drop the `start.md` file located at the root of this project directly into your AI Chat window and press Enter. 
+
+The AI will immediately adopt the role of your Chief of Staff, conduct a brief interview with you, and automatically generate your official Mandate file straight into the `00_FOUNDER_INPUT/` folder. Drop any additional raw files (Competitor Intel, Spreadsheets) into that folder as well.
 
 **Step 2: Trigger The Company (Level 2)**
 Open your Agentic AI chat inside this repository and copy-paste this exact prompt:
