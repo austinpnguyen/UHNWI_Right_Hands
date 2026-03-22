@@ -107,15 +107,23 @@ To bring this OS to your computer, open your terminal (or simply tell your Agent
 ```bash
 git clone https://github.com/austinpnguyen/UHNWI_Right_Hands.git
 cd UHNWI_Right_Hands
+pip install -r requirements.txt
 ```
-*CRITICAL: Make sure your AI chat window is opened **inside** the `UHNWI_Right_Hands` folder before proceeding to Step 1.*
+*CRITICAL: Make sure your AI chat window is opened **inside** the `UHNWI_Right_Hands` folder before proceeding.*
 
 **Step 1: The Mandate (Initialization)**
 Simply drag and drop the `start.md` file located at the root of this project directly into your AI Chat window and press Enter. 
 
 The AI will immediately adopt the role of your Chief of Staff, conduct a brief interview with you, and automatically generate your official Mandate file straight into the `00_FOUNDER_INPUT/` folder. Drop any additional raw files (Competitor Intel, Spreadsheets) into that folder as well.
 
-**Step 2: Trigger The Company (Level 2)**
+**Step 2: Launch The Dashboard (Giao diện Web App)**
+If you prefer a beautiful visual interface over raw files, you can launch the Python Web Dashboard. Open your terminal and run:
+```bash
+streamlit run dashboard.py
+```
+This will automatically open a Command Center in your browser (`http://localhost:8501`) where you can view your active mandates and trigger the simulated pipelines.
+
+**Step 3: Trigger The Company (Level 2)**
 Open your Agentic AI chat inside this repository and copy-paste this exact prompt:
 > *"Read the mandate in `00_FOUNDER_INPUT/01_project_idea_sample.md`. Adopt the exact persona of the CEO (`agents/company/ceo.md`) and act as the dictator. Call upon the C-Suite (`cpo.md`, `cmo.md`, `cfo.md`, `coo.md`) to synthesize `master_plan_v1.md`. Write and save the markdown file directly to `company_files/crucible_testing/`."*
 
