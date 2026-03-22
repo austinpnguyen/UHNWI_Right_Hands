@@ -106,3 +106,13 @@ They pass structured documents to each other locally via the `company_files/` fo
 1. **Start the Engine**: Drop your ideas/reports into `00_FOUNDER_INPUT/01_project_idea_sample.md` and pass it to the **Chief of Staff (CoS)** or **CEO**.
 2. **Watch the Crucible**: The CEO coordinates the Master Plan, pushes it to The Market, and iterates until the Target Buyer clicks "BUY".
 3. **Approve Final**: The CoS presents the final, mathematically audited plan to you for capital wire approval.
+
+## Background Python Orchestration & AntiGravity Support
+This OS is designed to be 100% platform-agnostic. We use pure Python and `Makefile` standards rather than locking you into specific AI terminal tools.
+
+If you are using **AntiGravity** or wish to run the agents autonomously in the background, you can trigger the Python Orchestration Engine from your terminal:
+- `make run-csuite`: Wakes up the C-Suite to construct the Master Plan.
+- `make run-market`: Pushes the V1 Plan into the Crucible for brutal testing.
+- `make run-audit`: Deploys The Shield to review the feedback logs.
+- `make run-all`: Executes the entire pipeline synchronously.
+- `make daemon`: Runs the Python Engine indefinitely in the background, waiting for new mandates in `00_FOUNDER_INPUT/` to execute asynchronously while interacting with the AntiGravity service.
