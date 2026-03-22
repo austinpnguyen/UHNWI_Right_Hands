@@ -5,7 +5,7 @@ To completely eliminate hallucination, agents pass information using explicit Ma
 ## The Conveyor Belt
 
 ### Phase 1: Initiation
-1. The Founder inputs a goal into `company_files/founder_inputs/01_project_idea_sample.md` (e.g., "Launch a premium real estate fund" or "Create a luxury security agency").
+1. The Founder inputs a goal into `00_FOUNDER_INPUT/01_project_idea_sample.md` (e.g., "Launch a premium real estate fund" or "Create a luxury security agency").
 2. The **Chief of Staff (CoS)** reads it and passes the operational directive to the **CEO**.
 3. (Optional) The **Whisperer** reads it to ensure the Founder isn't just launching a project out of spite because a rival launched one.
 

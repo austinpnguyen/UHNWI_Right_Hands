@@ -103,6 +103,6 @@ Instead of one "helpful assistant," this system divides responsibility into four
 All agents are strictly controlled by heavily engineered 15-point Persona Prompts (found in `docs/AGENT-GUIDELINE.md`).
 They pass structured documents to each other locally via the `company_files/` folder to eliminate AI hallucination.
 
-1. **Start the Engine**: Drop your ideas/reports into `company_files/founder_inputs/01_project_idea_sample.md` and pass it to the **Chief of Staff (CoS)** or **CEO**.
+1. **Start the Engine**: Drop your ideas/reports into `00_FOUNDER_INPUT/01_project_idea_sample.md` and pass it to the **Chief of Staff (CoS)** or **CEO**.
 2. **Watch the Crucible**: The CEO coordinates the Master Plan, pushes it to The Market, and iterates until the Target Buyer clicks "BUY".
 3. **Approve Final**: The CoS presents the final, mathematically audited plan to you for capital wire approval.
