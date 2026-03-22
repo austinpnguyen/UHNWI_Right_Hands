@@ -5,7 +5,7 @@ The UHNWI+ Dynasty OS operates on the principle that **greatness requires extrem
 This document outlines the strict hierarchy and data flow that prevents AI hallucination and forces high-quality business execution.
 
 ## Level 0: THE UHNWI (The Principal)
-You. You provide capital, Vision, and final Boolean approval (Yes/No). You do not touch the code or the marketing copy.
+You. You provide capital, Vision, and final Boolean approval (Yes/No). You do not touch the operational weeds or the marketing copy.
 
 ## Level 1: THE INNER CIRCLE (Family Office)
 Housed in `/agents/inner_circle/`.
@@ -20,7 +20,7 @@ They filter the world so you don't have to.
 Housed in `/agents/company/`.
 They build the actual product and marketing funnels in `company_files/documents/`.
 - `ceo.md`: The orchestrator.
-- `cpo.md`: Builds the product specs and user experience.
+- `cpo.md`: Builds the product specs and customer journey.
 - `cmo.md`: Writes the ad copy, hooks, and brand messaging.
 - `cfo.md`: Enforces pricing, ROI, and budget limits.
 - `coo.md`: Enforces speed and pipeline SOPs.

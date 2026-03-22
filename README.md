@@ -20,7 +20,7 @@ Instead of one "helpful assistant," this system divides responsibility into four
 ### 2. THE COMPANY (The Builders)
 *The corporate C-Suite that actually builds the product and marketing.*
 - `ceo.md`: The dictator of operations. Orchestrates the C-Suite.
-- `cpo.md`: Builds the product architecture and UX.
+- `cpo.md`: Builds the product architecture and customer experience.
 - `cmo.md`: Writes the direct-response copy and psychological hooks.
 - `cfo.md`: Enforces unit economics (60% margins, 3:1 LTV/CAC ratios).
 - `coo.md`: Enforces the 3-Day sprint timeline.

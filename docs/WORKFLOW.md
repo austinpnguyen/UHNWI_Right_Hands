@@ -5,14 +5,14 @@ To completely eliminate hallucination, agents pass information using explicit Ma
 ## The Conveyor Belt
 
 ### Phase 1: Initiation
-1. The Founder inputs a goal into `company_files/active_projects/current_mandate.md` (e.g., "Launch a premium AI concierge software").
+1. The Founder inputs a goal into `company_files/active_projects/current_mandate.md` (e.g., "Launch a premium real estate fund" or "Create a luxury product line").
 2. The **Chief of Staff (CoS)** reads it and passes the operational directive to the **CEO**.
-3. (Optional) The **Whisperer** reads it to ensure the Founder isn't just launching an app out of spite because a rival launched one.
+3. (Optional) The **Whisperer** reads it to ensure the Founder isn't just launching a project out of spite because a rival launched one.
 
 ### Phase 2: Assembly (V1 Draft)
 1. The CEO splits the mandate into strict constraints and assigns tasks to the CPO, CMO, and CFO.
 2. They collaboratively fill out `company_files/templates/master_plan_template.md`.
-3. The **CISO** scans the CPO's tech architecture for privacy breaches. The **COO** verifies the team can build it in 3 days.
+3. The **CISO** scans the CPO's physical/digital architecture for vulnerabilities. The **COO** verifies the team can build the prototype in 3 days.
 
 ### Phase 3: The Market Crucible
 1. The COO pushes the assembled `master_plan_v1.md` into `company_files/crucible_testing/`.

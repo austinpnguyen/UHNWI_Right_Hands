@@ -9,7 +9,7 @@ This document visually maps the reporting structure, data flow, and "Extreme Fri
   |_ FLOW: Gives mandate -> Waits -> Receives optimized synthesis -> Approves capital.
 =================================================================================
                                       |
-   (Mandate Passed Down: "Build an elite AI Concierge")
+   (Mandate Passed Down: "Launch a new ultra-luxury service offering")
                                       v
 =================================================================================
 [ LEVEL 1: THE INNER CIRCLE (Family Office & Shield) ]
@@ -26,7 +26,7 @@ This document visually maps the reporting structure, data flow, and "Extreme Fri
 [ LEVEL 2: THE COMPANY (Corporate Execution) ]
   |_ CEO (Orchestrator)       -> commands the C-Suite and synthesizes the Master Plan.
        |
-       |_ CPO                 -> builds the software architecture and UX map.
+       |_ CPO                 -> builds the product architecture and customer experience map.
        |_ CMO                 -> writes the psychological hooks and brand copy.
        |_ CFO                 -> enforces 60% margins and hard LTV:CAC ratios.
        |_ COO                 -> enforces the aggressive 3-day sprint timeline.
