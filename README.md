@@ -106,7 +106,7 @@ This framework is now powered by a **React Next.js Frontend** and an **Event-Dri
 ### 🏗️ Technical Architecture Map
 ```text
 =================================================================================
-[ FRONTEND: React / Next.js ]   (Runs on Port 80)
+[ FRONTEND: React / Next.js ]   (Runs on Port 1110)
   |_ Role: The visual Command Center. Renders the interactive Agent Node Map.
   |_ Tech: Next.js 15, TailwindCSS, Socket.io-client, ReactMarkdown.
 =================================================================================
@@ -156,12 +156,11 @@ Open a **brand new Terminal tab** (e.g., press `Cmd + T` on Mac), navigate to th
 ```bash
 cd frontend
 npm install
-sudo npm run dev
+npm run dev
 ```
-*(Note: Binding to Port 80 requires `sudo` privileges on Mac/Linux. Enter your computer password when prompted).*
 
 **Step 4: Execute The Dynasty**
-Open your browser to `http://localhost`. 
+Open your browser to `http://localhost:1110`. 
 1. Use the **"Type Mandate"** button to open the Mandate Editor and choose one of the 3 built-in templates (Aggressive Pivot, New Product Launch, Ops Overhaul), or write your own.
 2. Click **"Save & Select Mandate"**.
 3. Click the glowing **"Launch"** button.
