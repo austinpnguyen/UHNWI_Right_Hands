@@ -675,9 +675,6 @@ export default function Home() {
       <nav className="fixed top-0 left-0 right-0 h-16 border-b border-gray-200 bg-white/90 backdrop-blur-md z-50 shadow-sm px-6 flex items-center justify-between">
          {/* Brand */}
          <div className="flex items-center gap-3 flex-shrink-0">
-            <button onClick={()=>setIsLeftPanelOpen(!isLeftPanelOpen)} className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${isLeftPanelOpen?'bg-gray-100 text-gray-900':'text-gray-400 hover:text-gray-900 hover:bg-gray-100'}`}>
-              ☰
-            </button>
             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-600 to-blue-600 shadow-inner flex items-center justify-center text-white font-bold text-lg">U</div>
             <h1 className="text-xl font-black bg-clip-text text-transparent bg-gradient-to-r from-gray-900 via-slate-800 to-gray-900 tracking-tight hidden sm:block">UHNWI+ idea checker</h1>
             <div className="flex items-center gap-1.5 bg-white/90 px-2 py-1 rounded-md border border-gray-100 shadow-sm ml-2 sm:ml-4">
@@ -744,16 +741,30 @@ export default function Home() {
                  📄 View Final Report
                </button>
              )}
-             
-             <div className="w-px h-6 bg-gray-200 flex-shrink-0 hidden sm:block ml-2"/>
-             <button onClick={()=>setIsRightPanelOpen(!isRightPanelOpen)} className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${isRightPanelOpen?'bg-blue-50 text-blue-600':'text-gray-400 hover:text-gray-900 hover:bg-gray-100'}`}>
-               📡
-             </button>
          </div>
       </nav>
 
+      {/* ── Genie Floating Edge Toggles ── */}
+      <button 
+        onClick={() => setIsLeftPanelOpen(!isLeftPanelOpen)}
+        className={`fixed top-1/2 -translate-y-1/2 z-50 flex flex-col items-center justify-center bg-white border border-gray-200 shadow-[4px_0_24px_-8px_rgba(0,0,0,0.2)] transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]
+          ${isLeftPanelOpen ? 'left-72 rounded-r-2xl w-8 h-20 hover:w-10 hover:bg-gray-50' : 'left-0 rounded-r-2xl w-14 h-32 hover:w-16 hover:bg-gray-50'}`}
+      >
+        <span className="text-xl mb-1">{isLeftPanelOpen ? '‹' : '🏛️'}</span>
+        {!isLeftPanelOpen && <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest mt-1" style={{writingMode:'vertical-rl',textOrientation:'mixed'}}>ORG MAP</span>}
+      </button>
+
+      <button 
+        onClick={() => setIsRightPanelOpen(!isRightPanelOpen)}
+        className={`fixed top-1/2 -translate-y-1/2 z-50 flex flex-col items-center justify-center bg-white border border-gray-200 shadow-[-4px_0_24px_-8px_rgba(0,0,0,0.2)] transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]
+          ${isRightPanelOpen ? 'right-80 rounded-l-2xl w-8 h-20 hover:w-10 hover:bg-gray-50' : 'right-0 rounded-l-2xl w-14 h-32 hover:w-16 hover:bg-gray-50'}`}
+      >
+        <span className="text-xl mb-1">{isRightPanelOpen ? '›' : '📡'}</span>
+        {!isRightPanelOpen && <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest mt-1 rotate-180" style={{writingMode:'vertical-rl',textOrientation:'mixed'}}>LIVE LOGS</span>}
+      </button>
+
       {/* ── Left Sidebar (Company Hierarchy) ── */}
-      <aside className={`fixed top-16 left-0 bottom-0 w-72 bg-white/90 backdrop-blur-2xl border-r border-white/60 shadow-xl flex flex-col z-40 transition-transform duration-300 ${isLeftPanelOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed top-16 left-0 bottom-0 w-72 bg-white/90 backdrop-blur-2xl border-r border-white/60 shadow-2xl flex flex-col z-40 transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${isLeftPanelOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="h-14 border-b border-gray-100 flex items-center px-5 bg-gray-50/50">
           <h2 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
             🏛️ Hierarchy
@@ -792,7 +803,7 @@ export default function Home() {
       </aside>
 
       {/* ── Right Sidebar (Live Activity Logs) ── */}
-      <aside className={`fixed top-16 right-0 bottom-0 w-80 bg-white/90 backdrop-blur-2xl border-l border-white/60 shadow-xl flex flex-col z-40 transition-transform duration-300 ${isRightPanelOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+      <aside className={`fixed top-16 right-0 bottom-0 w-80 bg-white/90 backdrop-blur-2xl border-l border-white/60 shadow-2xl flex flex-col z-40 transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${isRightPanelOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="h-14 border-b border-gray-100 flex items-center justify-between px-5 bg-gray-50/50">
           <h2 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
@@ -814,7 +825,7 @@ export default function Home() {
       </aside>
 
       {/* ── Main Canvas ── */}
-      <main className="fixed top-16 bottom-0 overflow-auto bg-transparent relative custom-scrollbar p-10 transition-all duration-300"
+      <main className="fixed top-16 bottom-0 overflow-auto bg-transparent relative custom-scrollbar p-10 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]"
             style={{ left: isLeftPanelOpen ? 288 : 0, right: isRightPanelOpen ? 320 : 0 }}
             onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerLeave={handlePointerUp}>
         <div className="relative mx-auto my-10" style={{width:CANVAS_W, minHeight:CANVAS_H}}>
