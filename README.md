@@ -103,6 +103,31 @@ Instead of one "helpful assistant," this system divides responsibility into four
 
 This framework is now powered by a **React Next.js Frontend** and an **Event-Driven Node.js Backend**. You must run both components simultaneously in separate terminal tabs to connect the UI to the AI brain.
 
+### 🏗️ Technical Architecture Map
+```text
+=================================================================================
+[ FRONTEND: React / Next.js ]   (Runs on Port 3000)
+  |_ Role: The visual Command Center. Renders the interactive Agent Node Map.
+  |_ Tech: Next.js 15, TailwindCSS, Socket.io-client, ReactMarkdown.
+=================================================================================
+             ^
+             | (Real-time bi-directional WebSockets & REST API)
+             v
+=================================================================================
+[ BACKEND: Node.js Event Bus ]  (Runs on Port 8080)
+  |_ Role: The Brain. Orchestrates agents, manages configurations, saves outputs.
+  |_ Tech: Express.js, Socket.io (Server), Together AI SDK, Multer.
+=================================================================================
+             ^
+             | (LLM Inference Requests)
+             v
+=================================================================================
+[ INFERENCE: Together AI ]      (Cloud LLM Provider)
+  |_ Role: The GPU muscle executing the complex logic for each specific agent.
+  |_ Models: Meta Llama 3.3, DeepSeek V3, Qwen 235B, ServiceNow Apriel, etc.
+=================================================================================
+```
+
 **Step 0: Clone & Settings**
 ```bash
 git clone https://github.com/austinpnguyen/UHNWI_Right_Hands.git
