@@ -228,10 +228,10 @@ io.on('connection', (socket) => {
             ]);
 
             socket.emit('agent_log',    { agent: 'System', msg: 'C-Suite complete. Dispatching specialized divisions (Phase 3)...' });
-            socket.emit('pipeline_phase', { phase: 3, total: 3, label: 'Phase 3 — Specialized Divisions: Execution & Validation' });
+            socket.emit('pipeline_phase', { phase: 3, total: 4, label: 'Phase 3 — Specialized Divisions: Execution & Validation' });
 
             // Phase 3: Specialized execution branches based on C-Suite outputs
-            await Promise.all([
+            const phase3Outputs = await Promise.all([
                 // CPO Branch
                 runAgent({ socket, agentKey: 'CIO',          userMessage: `EXECUTE YOUR ROLE. Review the CPO Architecture and define the Tech Infrastructure.\n\nCPO ARCHITECTURE:\n${cpoArch}`, outputPath: path.join(outDir, `tech_infrastructure_${tag}.md`) }),
                 
@@ -252,13 +252,48 @@ io.on('connection', (socket) => {
                 runAgent({ socket, agentKey: 'WHISPERER',    userMessage: `EXECUTE YOUR ROLE. Review the COO's Ops Framework for intelligence vulnerabilities.\n\nCOO OPS FRAMEWORK:\n${cooOps}`, outputPath: path.join(outDir, `intelligence_recon_${tag}.md`) }),
             ]);
 
-            socket.emit('agent_log',        { agent: 'System', msg: 'Pipeline [FULL DYNASTY] complete. All 16 reports filed.' });
-            socket.emit('pipeline_complete', { phase: 'csuite', reportCount: 16 });
+            socket.emit('agent_log', { agent: 'System', msg: 'Phase 3 complete. CEO is synthesizing Final Report (Phase 4)...' });
+            socket.emit('pipeline_phase', { phase: 4, total: 4, label: 'Phase 4 — CEO: Final Synthesis' });
+
+            const finalReportCtx = `
+MANDATE:\n${mandateContent}
+
+CEO MASTER PLAN V1:\n${ceoPlan}
+
+--- C-SUITE TEST OUTPUTS ---
+CPO Architecture: ${cpoArch}
+CFO Financials: ${cfoFin}
+CMO GTM: ${cmoGtm}
+COO Ops: ${cooOps}
+
+--- PHASE 3 DIVISIONAL AUDIT FEEDBACK ---
+CIO: ${phase3Outputs[0]}
+Auditor: ${phase3Outputs[1]}
+CLO: ${phase3Outputs[2]}
+Mkt Analyst: ${phase3Outputs[3]}
+Competitor: ${phase3Outputs[4]}
+Target Buyer: ${phase3Outputs[5]}
+Unaware: ${phase3Outputs[6]}
+COS: ${phase3Outputs[7]}
+CISO: ${phase3Outputs[8]}
+Fixer: ${phase3Outputs[9]}
+Whisperer: ${phase3Outputs[10]}
+`;
+
+            const finalReportFileName = `final_report_${tag}.md`;
+            const ceoFinal = await runAgent({
+                socket, agentKey: 'CEO', 
+                userMessage: `EXECUTE YOUR ROLE: ALL Divisons have weighed in on your Master Plan V1. Below is the brutal feedback from the Market and the Shield.\n\nSynthesize all of this into a FINAL Executive Report for the Founder. Acknowledge the flaws found by the Auditors/Competitors and state the required pivots or explicitly state that the Founder should kill the project. Do NOT write V1 again.\n\n${finalReportCtx}`,
+                outputPath: path.join(outDir, finalReportFileName)
+            });
+
+            socket.emit('agent_log',        { agent: 'System', msg: 'Pipeline [FULL DYNASTY] complete. 17 reports filed.' });
+            socket.emit('pipeline_complete', { phase: 'csuite', reportCount: 17, finalReport: finalReportFileName, finalReportContent: ceoFinal });
         } catch (err) {
             if (err.message === 'STOPPED') {
                 socket.emit('pipeline_complete', { phase: 'stopped', reportCount: 0 });
             } else {
-                console.error('[NODE] Pipeline error:', err.message);
+                console.error('[NODE] Pipeline error:', err);
                 socket.emit('agent_log',        { agent: 'FATAL ERROR', msg: err.message });
                 socket.emit('pipeline_complete', { phase: 'error', reportCount: 0 });
             }

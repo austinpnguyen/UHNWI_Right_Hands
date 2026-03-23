@@ -451,6 +451,43 @@ function MandateModal({ activeMandate, onClose, onSaved }: any) {
   );
 }
 
+// ─── Final Report Modal ────────────────────────────────────────────────────────
+function FinalReportModal({ report, onClose }: { report: {fileName:string, content:string}, onClose: ()=>void }) {
+  const handleDownload = () => {
+    const blob = new Blob([report.content], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = report.fileName;
+    a.click(); URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6" style={{backgroundColor:'var(--bg-black, rgba(0,0,0,0.6))', backdropFilter:'blur(8px)'}}>
+      <div className="bg-white w-full max-w-5xl h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-emerald-50 to-teal-50">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl w-10 h-10 flex items-center justify-center rounded-2xl shadow-sm bg-emerald-100 text-emerald-600">👑</span>
+            <div>
+              <h2 className="font-bold text-gray-900 text-lg">Final Executive Report</h2>
+              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{report.fileName}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button onClick={handleDownload} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl flex items-center gap-2 shadow-sm transition-colors">
+              ⬇️ Download PDF/MD
+            </button>
+            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-black/5 hover:bg-black/10 transition-colors text-gray-500 hover:text-gray-900">✕</button>
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto p-10 bg-[#FAF9F6]">
+          <div className="max-w-3xl mx-auto bg-white p-12 rounded-xl shadow-sm border border-gray-100 prose prose-sm max-w-none text-gray-800 markdown-body">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{report.content}</ReactMarkdown>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function Home() {
   const [logs, setLogs]             = useState<{agent:string,msg:string}[]>([]);
@@ -467,6 +504,8 @@ export default function Home() {
   const [reportCount, setReportCount]     = useState(0);
   const [pipelineState, setPipelineState] = useState<'idle'|'running'|'done'|'stopped'>('idle');
   const [mandateModalOpen, setMandateModalOpen] = useState(false);
+  const [finalReport, setFinalReport] = useState<{fileName:string, content:string}|null>(null);
+  const [finalReportModalOpen, setFinalReportModalOpen] = useState(false);
   
   // Draggable nodes state
   const [positions, setPositions] = useState<Record<string, {x:number, y:number}>>(
@@ -502,12 +541,16 @@ export default function Home() {
       setActiveAgents(new Set());
       setReportCount(d.reportCount||0);
       setPipelineState(d.phase==='stopped'?'stopped':'done');
+      if (d.finalReportContent) {
+        setFinalReport({ fileName: d.finalReport, content: d.finalReportContent });
+      }
     });
     return ()=>{ s.close(); };
   },[]);
 
   const launchPipeline = ()=>{
     if(!socket||!activeMandate) return;
+    setFinalReport(null);
     setCompletedAgents(new Set()); setActiveAgents(new Set());
     setAgentStreams(Object.fromEntries(ALL_KEYS.map(k=>[k,'']))); setLogs([]);
     setPipelinePhase(null); setPipelineState('running'); setReportCount(0);
@@ -591,6 +634,10 @@ export default function Home() {
             if (socket) { socket.emit('get_mandates'); setTimeout(()=>setActiveMandate(fname), 300); }
           }} 
         />
+      )}
+
+      {finalReportModalOpen && finalReport && (
+        <FinalReportModal report={finalReport} onClose={()=>setFinalReportModalOpen(false)} />
       )}
 
       {/* Blobs */}
@@ -689,6 +736,14 @@ export default function Home() {
                 {pipelineState==='running' ? <span className="animate-spin">⟳</span> : '▶'}
                 {pipelineState==='done'||pipelineState==='stopped' ? 'Run Again' : 'Launch'}
               </button>
+
+              {finalReport && pipelineState==='done' && (
+                <button onClick={()=>setFinalReportModalOpen(true)}
+                  className="px-5 py-2 bg-emerald-50 border border-emerald-200 hover:border-emerald-300 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-sm animate-in fade-in slide-in-from-right-4 relative group">
+                  <span className="absolute -top-1 -right-1 flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"/><span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"/></span>
+                  📄 View Final Report
+                </button>
+              )}
               
               {/* Connection dot */}
               <div className="flex items-center gap-1.5 bg-white/90 px-3 py-2 rounded-xl border border-gray-100 shadow-sm ml-2">
