@@ -87,7 +87,10 @@ function AgentModal({ agent, onClose, agentStream, agentLogs, activeAgents, comp
   const isActive = activeAgents.has(agent.key);
   const isDone   = completedAgents.has(agent.key);
 
-  // Load config and prompt when modal opens
+  const receivesFrom = EDGES.filter(e => e.to === agent.key).map(e => e.from);
+  const outputsTo    = EDGES.filter(e => e.from === agent.key).map(e => e.to);
+
+  // Load config when modal opens
   useEffect(() => {
     fetch('http://localhost:8080/agent-config')
       .then(r=>r.json())
@@ -198,6 +201,26 @@ function AgentModal({ agent, onClose, agentStream, agentLogs, activeAgents, comp
                     <h4 className="font-bold text-gray-900 text-lg mb-1">{agent.label}</h4>
                     <p className="text-sm text-gray-600 leading-relaxed">Assigned Role: <strong className="text-gray-900">{agent.role}</strong>.</p>
                     <p className="text-sm text-gray-500 mt-2 leading-relaxed">This agent belongs to the <strong className="capitalize text-gray-800">{agent.div.replace('_',' ')}</strong> division. It receives inputs from upstream agents and generates specialized strategic reports.</p>
+                  </div>
+                </div>
+
+                {/* Pipeline I/O Context */}
+                <div className="mt-5 grid grid-cols-2 gap-4 border-t border-gray-200/60 pt-5">
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">📥 Receives Input From</p>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {receivesFrom.length > 0 
+                        ? receivesFrom.map(k => <span key={k} className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-1 rounded-lg shadow-sm">{k}</span>) 
+                        : <span className="text-xs font-medium text-gray-500 bg-white border border-gray-200 px-2.5 py-1 rounded-lg">Founder (Mandate)</span>}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">📤 Passes Output To</p>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {outputsTo.length > 0 
+                        ? outputsTo.map(k => <span key={k} className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-1 rounded-lg shadow-sm">{k}</span>) 
+                        : <span className="text-xs font-medium text-gray-500 bg-white border border-gray-200 px-2.5 py-1 rounded-lg">None (Final Output)</span>}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -451,6 +474,7 @@ export default function Home() {
   );
   const [draggingNode, setDraggingNode] = useState<string|null>(null);
   const [dragOffset, setDragOffset] = useState({x:0, y:0});
+  const dragOrigin = useRef({x:0, y:0});
 
   const logsRef = useRef<HTMLDivElement>(null);
 
@@ -521,10 +545,7 @@ export default function Home() {
   const handlePointerDown = (e: React.PointerEvent, key: string) => {
     if (e.target instanceof Element && e.target.closest('button')) return; // Ignore if clicking a button
     setDraggingNode(key);
-    // Calculate offset relative to node top-left
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    // We adjust for scroll inside the canvas wrapper later or map against standard clientX
-    // A simpler approach: Just store the mouse pos minus current state pos
+    dragOrigin.current = { x: e.clientX, y: e.clientY };
     const p = positions[key];
     setDragOffset({ x: e.clientX - p.x, y: e.clientY - p.y });
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -754,9 +775,9 @@ export default function Home() {
                     return (
                       <div key={agent.key}
                         onPointerDown={(e) => handlePointerDown(e, agent.key)}
-                        onClick={()=> {
-                          // Only open modal if we didn't drag
-                          if (!draggingNode) setModalAgent(agent.key);
+                        onClick={(e)=> {
+                          const dist = Math.hypot(e.clientX - dragOrigin.current.x, e.clientY - dragOrigin.current.y);
+                          if (dist < 5) setModalAgent(agent.key);
                         }}
                         title="Drag to move, click to configure"
                         className={`absolute cursor-pointer rounded-2xl border bg-white transition-shadow duration-300 select-none group
