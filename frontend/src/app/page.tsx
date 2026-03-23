@@ -28,22 +28,22 @@ const TOGETHER_MODELS = [
 
 // ─── All 16 agents ──────────────────────────────────────────────────────────
 const AGENTS = [
-  { key:'CEO',         label:'CEO',              role:'Master Plan',          icon:'♟️', color:'blue',    div:'company',      x:550,  y:40  },
-  { key:'CPO',         label:'CPO',              role:'Architecture',         icon:'🛠️', color:'indigo',  div:'company',      x:100,  y:180 },
-  { key:'CFO',         label:'CFO',              role:'Financials',           icon:'📈', color:'emerald', div:'company',      x:400,  y:180 },
-  { key:'CMO',         label:'CMO',              role:'Brand Strategy',       icon:'📣', color:'pink',    div:'company',      x:700,  y:180 },
-  { key:'COO',         label:'COO',              role:'Operations',           icon:'⚙️', color:'orange',  div:'company',      x:1000, y:180 },
-  { key:'CIO',         label:'CIO',              role:'Tech Infrastructure',  icon:'💻', color:'blue',    div:'inner_circle', x:100,  y:340 },
-  { key:'AUDITOR',     label:'Auditor',          role:'Financial Compliance', icon:'📊', color:'amber',   div:'shield',       x:300,  y:340 },
-  { key:'CLO',         label:'CLO',              role:'Legal Strategy',       icon:'⚖️', color:'slate',   div:'shield',       x:500,  y:340 },
-  { key:'MKT_ANALYST', label:'Market Analyst',   role:'Competitive Intel',    icon:'🔍', color:'blue',    div:'market',       x:600,  y:340 },
-  { key:'COMPETITOR',  label:'Competitor Sim',   role:'Adversarial Model',    icon:'⚔️', color:'red',     div:'market',       x:800,  y:340 },
-  { key:'COS',         label:'Chief of Staff',   role:'Exec Coordination',    icon:'📋', color:'violet',  div:'inner_circle', x:900,  y:340 },
-  { key:'CISO',        label:'CISO',             role:'Security & Privacy',   icon:'🛡️', color:'slate',   div:'inner_circle', x:1100, y:340 },
-  { key:'TARGET_BUYER',label:'Target Buyer',     role:'Buyer Psychology',     icon:'🎯', color:'emerald', div:'market',       x:600,  y:480 },
-  { key:'UNAWARE',     label:'Unaware Audience', role:'Cold Market Sim',      icon:'🌐', color:'gray',    div:'market',       x:800,  y:480 },
-  { key:'FIXER',       label:'The Fixer',        role:'Crisis Resolution',    icon:'🔧', color:'amber',   div:'inner_circle', x:900,  y:480 },
-  { key:'WHISPERER',   label:'The Whisperer',    role:'Intelligence & Recon', icon:'👁️', color:'purple',  div:'inner_circle', x:1100, y:480 },
+  { key:'CEO',         label:'CEO',              role:'Master Plan',          icon:'♟️', color:'blue',    div:'company',      x:550,  y:40,   desc: "Reads the Founder's instruction file and formulates the Master Plan, delegating specialized strategies to the C-Suite." },
+  { key:'CPO',         label:'CPO',              role:'Architecture',         icon:'🛠️', color:'indigo',  div:'company',      x:100,  y:180,  desc: "Designs the core product architecture and operational logistics based on the CEO's Master Plan." },
+  { key:'CFO',         label:'CFO',              role:'Financials',           icon:'📈', color:'emerald', div:'company',      x:400,  y:180,  desc: "Creates the brutal financial constraint model and pricing matrices to ensure high gross margins." },
+  { key:'CMO',         label:'CMO',              role:'Brand Strategy',       icon:'📣', color:'pink',    div:'company',      x:700,  y:180,  desc: "Formulates the Go-To-Market and elite brand strategy tailored for target demographics." },
+  { key:'COO',         label:'COO',              role:'Operations',           icon:'⚙️', color:'orange',  div:'company',      x:1000, y:180,  desc: "Maps out the full operational execution framework to deliver the promised services." },
+  { key:'CIO',         label:'CIO',              role:'Tech Infrastructure',  icon:'💻', color:'blue',    div:'inner_circle', x:100,  y:340,  desc: "Defines the technical infrastructure and software stack required by the CPO's architecture." },
+  { key:'AUDITOR',     label:'Auditor',          role:'Financial Compliance', icon:'📊', color:'amber',   div:'shield',       x:300,  y:340,  desc: "Aggressively stress-tests the CFO's financial model to identify fraudulent or optimistic assumptions." },
+  { key:'CLO',         label:'CLO',              role:'Legal Strategy',       icon:'⚖️', color:'slate',   div:'shield',       x:500,  y:340,  desc: "Reviews the business model and financials for fatal legal and compliance risks." },
+  { key:'MKT_ANALYST', label:'Market Analyst',   role:'Competitive Intel',    icon:'🔍', color:'blue',    div:'market',       x:600,  y:340,  desc: "Analyzes the GTM Strategy against market realities to determine viability." },
+  { key:'COMPETITOR',  label:'Competitor Sim',   role:'Adversarial Model',    icon:'⚔️', color:'red',     div:'market',       x:800,  y:340,  desc: "Simulates a ruthless competitor attempting to destroy the CMO's GTM Strategy." },
+  { key:'COS',         label:'Chief of Staff',   role:'Exec Coordination',    icon:'📋', color:'violet',  div:'inner_circle', x:900,  y:340,  desc: "Translates the COO's framework into a tight executive coordination schedule." },
+  { key:'CISO',        label:'CISO',             role:'Security & Privacy',   icon:'🛡️', color:'slate',   div:'inner_circle', x:1100, y:340,  desc: "Identifies security vulnerabilities and privacy loopholes in the operational layout." },
+  { key:'TARGET_BUYER',label:'Target Buyer',     role:'Buyer Psychology',     icon:'🎯', color:'emerald', div:'market',       x:600,  y:480,  desc: "Acts as the target demographic, evaluating the CMO's strategy for maximum appeal." },
+  { key:'UNAWARE',     label:'Unaware Audience', role:'Cold Market Sim',      icon:'🌐', color:'gray',    div:'market',       x:800,  y:480,  desc: "Evaluates branding from the perspective of a cold, completely unaware layperson." },
+  { key:'FIXER',       label:'The Fixer',        role:'Crisis Resolution',    icon:'🔧', color:'amber',   div:'inner_circle', x:900,  y:480,  desc: "Identifies operational crisis points and formulates brutal resolutions to save the company." },
+  { key:'WHISPERER',   label:'The Whisperer',    role:'Intelligence & Recon', icon:'👁️', color:'purple',  div:'inner_circle', x:1100, y:480,  desc: "Reviews the operational framework for intelligence vulnerabilities and operational security." },
 ];
 
 const EDGES = [
@@ -200,7 +200,7 @@ function AgentModal({ agent, onClose, agentStream, agentLogs, activeAgents, comp
                   <div>
                     <h4 className="font-bold text-gray-900 text-lg mb-1">{agent.label}</h4>
                     <p className="text-sm text-gray-600 leading-relaxed">Assigned Role: <strong className="text-gray-900">{agent.role}</strong>.</p>
-                    <p className="text-sm text-gray-500 mt-2 leading-relaxed">This agent belongs to the <strong className="capitalize text-gray-800">{agent.div.replace('_',' ')}</strong> division. It receives inputs from upstream agents and generates specialized strategic reports.</p>
+                    <p className="text-sm text-gray-500 mt-2 leading-relaxed">{agent.desc || `This agent belongs to the ${agent.div.replace('_',' ')} division. It receives inputs from upstream agents and generates specialized strategic reports.`}</p>
                   </div>
                 </div>
 
