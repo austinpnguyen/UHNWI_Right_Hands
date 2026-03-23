@@ -48,10 +48,18 @@ async function runAgent({ socket, agentKey, systemPromptPath, userMessage, outpu
     socket.emit('agent_log', { agent: agentKey, msg: `[${agentKey}] Starting via ${COMPANY_MODEL}...` });
     socket.emit('agent_active', { agent: agentKey, active: true });
 
+    // Prepend a strict guardrail to prevent the model from hallucinating tool calls.
+    // Some models interpret role descriptions as real tool availability — this blocks that.
+    const GUARDRAIL = `IMPORTANT: You do NOT have access to any tools, file systems, or external APIs.
+ALL context you need is provided directly in this message.
+Do NOT output any <tool_calls>, <function_call>, Glob, Read, or similar blocks.
+Generate your report NOW using only the text provided below.
+---\n\n`;
+
     const runner = await together.chat.completions.create({
         messages: [
             { role: "system", content: systemPrompt },
-            { role: "user",   content: userMessage }
+            { role: "user",   content: GUARDRAIL + userMessage }
         ],
         model: COMPANY_MODEL,
         temperature: 0.6,
