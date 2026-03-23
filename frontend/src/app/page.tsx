@@ -28,22 +28,32 @@ const TOGETHER_MODELS = [
 
 // ─── All 16 agents ──────────────────────────────────────────────────────────
 const AGENTS = [
-  { key:'CEO',         label:'CEO',              role:'Master Plan',          icon:'♟️', color:'blue',    div:'company',      x:550,  y:40,   desc: "Reads the Founder's instruction file and formulates the Master Plan, delegating specialized strategies to the C-Suite." },
+  { key:'CEO',         label:'CEO',              role:'Master Plan',          icon:'♟️', color:'blue',    div:'company',      x:825,  y:40,   desc: "Reads the Founder's instruction file and formulates the Master Plan, delegating specialized strategies to the C-Suite." },
+  
+  // C-SUITE ROW
   { key:'CPO',         label:'CPO',              role:'Architecture',         icon:'🛠️', color:'indigo',  div:'company',      x:100,  y:180,  desc: "Designs the core product architecture and operational logistics based on the CEO's Master Plan." },
-  { key:'CFO',         label:'CFO',              role:'Financials',           icon:'📈', color:'emerald', div:'company',      x:400,  y:180,  desc: "Creates the brutal financial constraint model and pricing matrices to ensure high gross margins." },
-  { key:'CMO',         label:'CMO',              role:'Brand Strategy',       icon:'📣', color:'pink',    div:'company',      x:700,  y:180,  desc: "Formulates the Go-To-Market and elite brand strategy tailored for target demographics." },
-  { key:'COO',         label:'COO',              role:'Operations',           icon:'⚙️', color:'orange',  div:'company',      x:1000, y:180,  desc: "Maps out the full operational execution framework to deliver the promised services." },
+  { key:'CFO',         label:'CFO',              role:'Financials',           icon:'📈', color:'emerald', div:'company',      x:500,  y:180,  desc: "Creates the brutal financial constraint model and pricing matrices to ensure high gross margins." },
+  { key:'CMO',         label:'CMO',              role:'Brand Strategy',       icon:'📣', color:'pink',    div:'company',      x:950, y:180,  desc: "Formulates the Go-To-Market and elite brand strategy tailored for target demographics." },
+  { key:'COO',         label:'COO',              role:'Operations',           icon:'⚙️', color:'orange',  div:'company',      x:1550, y:180,  desc: "Maps out the full operational execution framework to deliver the promised services." },
+  
+  // BRANCH: CPO
   { key:'CIO',         label:'CIO',              role:'Tech Infrastructure',  icon:'💻', color:'blue',    div:'inner_circle', x:100,  y:340,  desc: "Defines the technical infrastructure and software stack required by the CPO's architecture." },
-  { key:'AUDITOR',     label:'Auditor',          role:'Financial Compliance', icon:'📊', color:'amber',   div:'shield',       x:300,  y:340,  desc: "Aggressively stress-tests the CFO's financial model to identify fraudulent or optimistic assumptions." },
-  { key:'CLO',         label:'CLO',              role:'Legal Strategy',       icon:'⚖️', color:'slate',   div:'shield',       x:500,  y:340,  desc: "Reviews the business model and financials for fatal legal and compliance risks." },
-  { key:'MKT_ANALYST', label:'Market Analyst',   role:'Competitive Intel',    icon:'🔍', color:'blue',    div:'market',       x:600,  y:340,  desc: "Analyzes the GTM Strategy against market realities to determine viability." },
-  { key:'COMPETITOR',  label:'Competitor Sim',   role:'Adversarial Model',    icon:'⚔️', color:'red',     div:'market',       x:800,  y:340,  desc: "Simulates a ruthless competitor attempting to destroy the CMO's GTM Strategy." },
-  { key:'COS',         label:'Chief of Staff',   role:'Exec Coordination',    icon:'📋', color:'violet',  div:'inner_circle', x:900,  y:340,  desc: "Translates the COO's framework into a tight executive coordination schedule." },
-  { key:'CISO',        label:'CISO',             role:'Security & Privacy',   icon:'🛡️', color:'slate',   div:'inner_circle', x:1100, y:340,  desc: "Identifies security vulnerabilities and privacy loopholes in the operational layout." },
-  { key:'TARGET_BUYER',label:'Target Buyer',     role:'Buyer Psychology',     icon:'🎯', color:'emerald', div:'market',       x:600,  y:480,  desc: "Acts as the target demographic, evaluating the CMO's strategy for maximum appeal." },
-  { key:'UNAWARE',     label:'Unaware Audience', role:'Cold Market Sim',      icon:'🌐', color:'gray',    div:'market',       x:800,  y:480,  desc: "Evaluates branding from the perspective of a cold, completely unaware layperson." },
-  { key:'FIXER',       label:'The Fixer',        role:'Crisis Resolution',    icon:'🔧', color:'amber',   div:'inner_circle', x:900,  y:480,  desc: "Identifies operational crisis points and formulates brutal resolutions to save the company." },
-  { key:'WHISPERER',   label:'The Whisperer',    role:'Intelligence & Recon', icon:'👁️', color:'purple',  div:'inner_circle', x:1100, y:480,  desc: "Reviews the operational framework for intelligence vulnerabilities and operational security." },
+  
+  // BRANCH: CFO
+  { key:'AUDITOR',     label:'Auditor',          role:'Financial Compliance', icon:'📊', color:'amber',   div:'shield',       x:400,  y:340,  desc: "Aggressively stress-tests the CFO's financial model to identify fraudulent or optimistic assumptions." },
+  { key:'CLO',         label:'CLO',              role:'Legal Strategy',       icon:'⚖️', color:'slate',   div:'shield',       x:600,  y:340,  desc: "Reviews the business model and financials for fatal legal and compliance risks." },
+  
+  // BRANCH: CMO
+  { key:'MKT_ANALYST', label:'Market Analyst',   role:'Competitive Intel',    icon:'🔍', color:'blue',    div:'market',       x:850, y:340,  desc: "Analyzes the GTM Strategy against market realities to determine viability." },
+  { key:'COMPETITOR',  label:'Competitor Sim',   role:'Adversarial Model',    icon:'⚔️', color:'red',     div:'market',       x:1050, y:340,  desc: "Simulates a ruthless competitor attempting to destroy the CMO's GTM Strategy." },
+  { key:'TARGET_BUYER',label:'Target Buyer',     role:'Buyer Psychology',     icon:'🎯', color:'emerald', div:'market',       x:850, y:480,  desc: "Acts as the target demographic, evaluating the CMO's strategy for maximum appeal." },
+  { key:'UNAWARE',     label:'Unaware Audience', role:'Cold Market Sim',      icon:'🌐', color:'gray',    div:'market',       x:1050, y:480,  desc: "Evaluates branding from the perspective of a cold, completely unaware layperson." },
+  
+  // BRANCH: COO
+  { key:'COS',         label:'Chief of Staff',   role:'Exec Coordination',    icon:'📋', color:'violet',  div:'inner_circle', x:1450, y:340,  desc: "Translates the COO's framework into a tight executive coordination schedule." },
+  { key:'CISO',        label:'CISO',             role:'Security & Privacy',   icon:'🛡️', color:'slate',   div:'inner_circle', x:1650, y:340,  desc: "Identifies security vulnerabilities and privacy loopholes in the operational layout." },
+  { key:'FIXER',       label:'The Fixer',        role:'Crisis Resolution',    icon:'🔧', color:'amber',   div:'inner_circle', x:1450, y:480,  desc: "Identifies operational crisis points and formulates brutal resolutions to save the company." },
+  { key:'WHISPERER',   label:'The Whisperer',    role:'Intelligence & Recon', icon:'👁️', color:'purple',  div:'inner_circle', x:1650, y:480,  desc: "Reviews the operational framework for intelligence vulnerabilities and operational security." },
 ];
 
 const EDGES = [
@@ -53,7 +63,7 @@ const EDGES = [
   { from:'COO',to:'COS'},{ from:'COO',to:'CISO'},{ from:'COO',to:'FIXER'},{ from:'COO',to:'WHISPERER'},
 ];
 
-const NODE_W=190, NODE_H=85, CANVAS_W=1320, CANVAS_H=640;
+const NODE_W=190, NODE_H=85, CANVAS_W=1900, CANVAS_H=640;
 
 const C: Record<string,any> = {
   blue:    { ring:'ring-blue-400',    glow:'shadow-[0_0_20px_rgba(96,165,250,0.5)]',    dot:'bg-blue-500',    badge:'bg-blue-100 text-blue-700',     h:'from-blue-50',    ic:'bg-blue-100 text-blue-600',    edge:'#60A5FA' },
