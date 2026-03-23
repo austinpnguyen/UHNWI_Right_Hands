@@ -32,12 +32,12 @@ yarn-debug.log*
 yarn-error.log*
 
 # Dynasty OS specific output files
-company_files/crucible_testing/*.md
+company_files/thoughts/*.md
 company_files/feedback_logs/*.md
-!company_files/crucible_testing/.gitkeep
+!company_files/thoughts/.gitkeep
 !company_files/feedback_logs/.gitkeep
 
 # Dynasty OS dynamic states
 backend/agent_config.json
 backend/agent_prompts.json
-00_FOUNDER_INPUT/testing.md
+00_FOUNDER_INSTRUCTION/testing.md

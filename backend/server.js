@@ -13,7 +13,7 @@ app.use(cors());
 app.use(express.json());
 
 // ─── Directories ────────────────────────────────────────────────────────────
-const INPUT_DIR  = path.join(__dirname, '../00_FOUNDER_INPUT');
+const INPUT_DIR  = path.join(__dirname, '../00_FOUNDER_INSTRUCTION');
 const CONFIG_PATH = path.join(__dirname, 'agent_config.json');
 if (!fs.existsSync(INPUT_DIR)) fs.mkdirSync(INPUT_DIR, { recursive: true });
 
@@ -96,18 +96,18 @@ const storage = multer.diskStorage({
 const upload = multer({ storage, fileFilter: (req, file, cb) => {
     cb(null, ['.md', '.txt'].includes(path.extname(file.originalname).toLowerCase()));
 }});
-app.post('/upload', upload.single('mandate'), (req, res) => {
+app.post('/upload', upload.single('instruction'), (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No valid file (.md or .txt only)' });
     res.json({ filename: req.file.originalname });
 });
 
-app.get('/mandate/:filename', (req, res) => {
+app.get('/instruction/:filename', (req, res) => {
     const full = path.join(INPUT_DIR, req.params.filename);
     if (!fs.existsSync(full)) return res.status(404).json({ error: 'Not found' });
     res.json({ content: fs.readFileSync(full, 'utf8') });
 });
 
-app.post('/save-mandate', (req, res) => {
+app.post('/save-instruction', (req, res) => {
     const { filename, content } = req.body;
     if (!filename || typeof content !== 'string') return res.status(400).json({ error: 'Missing data' });
     const safeName = filename.replace(/[^a-z0-9_.-]/gi, '_');
@@ -189,9 +189,9 @@ io.on('connection', (socket) => {
     console.log('[NODE] Client connected');
     socket.cancelled = false;
 
-    socket.on('get_mandates', () => {
+    socket.on('get_instructions', () => {
         const files = fs.readdirSync(INPUT_DIR).filter(f => /\.(md|txt)$/.test(f));
-        socket.emit('mandates_list', files);
+        socket.emit('instructions_list', files);
     });
 
     // Founder can halt the pipeline at any point mid-stream
@@ -201,25 +201,25 @@ io.on('connection', (socket) => {
     });
 
     socket.on('trigger_pipeline', async (data) => {
-        if (!data.mandate) return;
+        if (!data.instruction) return;
         socket.cancelled = false;
-        const mandateContent = fs.readFileSync(path.join(INPUT_DIR, data.mandate), 'utf8');
-        const outDir = path.join(__dirname, '../company_files/crucible_testing');
-        const tag    = `${data.mandate.replace(/\.(md|txt)$/, '')}_${Date.now()}`;
+        const instructionContent = fs.readFileSync(path.join(INPUT_DIR, data.instruction), 'utf8');
+        const outDir = path.join(__dirname, '../company_files/thoughts', data.instruction.replace(/\.(md|txt)$/, ''));
+        const tag    = `${data.instruction.replace(/\.(md|txt)$/, '')}_${Date.now()}`;
 
         socket.emit('pipeline_phase', { phase: 1, total: 3, label: 'Phase 1 — CEO: Master Plan' });
 
         try {
             const ceoPlan = await runAgent({
                 socket, agentKey: 'CEO',
-                userMessage: `EXECUTE YOUR ROLE. Synthesize a Master Plan V1 from the Founder's Mandate below.\n\nMANDATE:\n${mandateContent}`,
+                userMessage: `EXECUTE YOUR ROLE. Synthesize a Master Plan V1 from the Founder's Instruction below.\n\nINSTRUCTION:\n${instructionContent}`,
                 outputPath: path.join(outDir, `master_plan_v1_${tag}.md`)
             });
 
             socket.emit('agent_log',    { agent: 'System', msg: 'CEO complete. Dispatching C-Suite (Phase 2) in parallel...' });
             socket.emit('pipeline_phase', { phase: 2, total: 3, label: 'Phase 2 — C-Suite: Strategy Formulation' });
 
-            const sharedCtx = `MANDATE:\n${mandateContent}\n\nCEO MASTER PLAN:\n${ceoPlan}`;
+            const sharedCtx = `INSTRUCTION:\n${instructionContent}\n\nCEO MASTER PLAN:\n${ceoPlan}`;
             const [cpoArch, cfoFin, cmoGtm, cooOps] = await Promise.all([
                 runAgent({ socket, agentKey: 'CPO', userMessage: `EXECUTE YOUR ROLE. Design the full product architecture.\n\n${sharedCtx}`, outputPath: path.join(outDir, `architecture_${tag}.md`) }),
                 runAgent({ socket, agentKey: 'CFO', userMessage: `EXECUTE YOUR ROLE. Produce a brutal financial constraint model.\n\n${sharedCtx}`, outputPath: path.join(outDir, `financial_model_${tag}.md`) }),
@@ -256,7 +256,7 @@ io.on('connection', (socket) => {
             socket.emit('pipeline_phase', { phase: 4, total: 4, label: 'Phase 4 — CEO: Final Synthesis' });
 
             const finalReportCtx = `
-MANDATE:\n${mandateContent}
+INSTRUCTION:\n${instructionContent}
 
 CEO MASTER PLAN V1:\n${ceoPlan}
 

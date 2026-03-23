@@ -211,7 +211,7 @@ function AgentModal({ agent, onClose, agentStream, agentLogs, activeAgents, comp
                     <div className="flex gap-1.5 flex-wrap">
                       {receivesFrom.length > 0 
                         ? receivesFrom.map(k => <span key={k} className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-1 rounded-lg shadow-sm">{k}</span>) 
-                        : <span className="text-xs font-medium text-gray-500 bg-white border border-gray-200 px-2.5 py-1 rounded-lg">Founder (Mandate)</span>}
+                        : <span className="text-xs font-medium text-gray-500 bg-white border border-gray-200 px-2.5 py-1 rounded-lg">Founder (Instruction)</span>}
                     </div>
                   </div>
                   <div>
@@ -354,35 +354,35 @@ function AgentModal({ agent, onClose, agentStream, agentLogs, activeAgents, comp
   );
 }
 
-// ─── Mandate Editor Modal ────────────────────────────────────────────────────
-const MANDATE_TEMPLATES = {
-  t1: { title: "Aggressive Pivot", content: "MANDATE: The company is currently bleeding cash in the B2B SaaS space. We must immediately pivot to a B2C Fintech model. Burn rate must be cut by 50%. The CEO must outline a ruthless timeline for this transition. CPO needs to design a mobile-first consumer app. CMO needs to devise a viral marketing loop. CFO needs to model the exact runway required." },
-  t2: { title: "New Product Launch", content: "MANDATE: We are launching a proprietary 'AI Doctor Assistant' into the US healthcare market. The objective is to acquire 1,000 independent clinics within 6 months. CPO must ensure HIPAA compliance in architecture. CMO must build a GTM strategy targeting clinical administrators. CFO must model a pricing tier that accelerates adoption while maintaining 70%+ gross margins." },
-  t3: { title: "Operational Overhaul", content: "MANDATE: Revenue is stable but operational inefficiencies are destroying our profit margins. The mandate is to completely overhaul our supply chain and internal processes. COO must restructure the entire ops framework. CFO must identify the largest cost centers for trimming. CMO must manage public relations if we need to let people go. Zero impact on product quality is permitted." }
+// ─── Instruction Editor Modal ────────────────────────────────────────────────────
+const INSTRUCTION_TEMPLATES = {
+  t1: { title: "Aggressive Pivot", content: "INSTRUCTION: The company is currently bleeding cash in the B2B SaaS space. We must immediately pivot to a B2C Fintech model. Burn rate must be cut by 50%. The CEO must outline a ruthless timeline for this transition. CPO needs to design a mobile-first consumer app. CMO needs to devise a viral marketing loop. CFO needs to model the exact runway required." },
+  t2: { title: "New Product Launch", content: "INSTRUCTION: We are launching a proprietary 'AI Doctor Assistant' into the US healthcare market. The objective is to acquire 1,000 independent clinics within 6 months. CPO must ensure HIPAA compliance in architecture. CMO must build a GTM strategy targeting clinical administrators. CFO must model a pricing tier that accelerates adoption while maintaining 70%+ gross margins." },
+  t3: { title: "Operational Overhaul", content: "INSTRUCTION: Revenue is stable but operational inefficiencies are destroying our profit margins. The instruction is to completely overhaul our supply chain and internal processes. COO must restructure the entire ops framework. CFO must identify the largest cost centers for trimming. CMO must manage public relations if we need to let people go. Zero impact on product quality is permitted." }
 };
 
-function MandateModal({ activeMandate, onClose, onSaved }: any) {
-  const [tab, setTab] = useState<'t1'|'t2'|'t3'|'custom'>(activeMandate ? 'custom' : 't1');
+function InstructionModal({ activeInstruction, onClose, onSaved }: any) {
+  const [tab, setTab] = useState<'t1'|'t2'|'t3'|'custom'>(activeInstruction ? 'custom' : 't1');
   const [content, setContent] = useState('');
-  const [filename, setFilename] = useState(activeMandate || 'draft_mandate.md');
+  const [filename, setFilename] = useState(activeInstruction || 'draft_instruction.md');
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    if (tab === 'custom' && activeMandate && !loaded) {
-      fetch(`http://localhost:1110/mandate/${activeMandate}`)
+    if (tab === 'custom' && activeInstruction && !loaded) {
+      fetch(`http://localhost:1110/instruction/${activeInstruction}`)
         .then(r=>r.json()).then(d=>{ if(d.content) setContent(d.content); setLoaded(true); }).catch(()=>{});
     } else if (tab !== 'custom') {
-      setContent(MANDATE_TEMPLATES[tab].content);
+      setContent(INSTRUCTION_TEMPLATES[tab].content);
       setFilename(`template_${tab}.md`);
     }
-  }, [tab, activeMandate, loaded]);
+  }, [tab, activeInstruction, loaded]);
 
   const handleSave = async () => {
     if (!filename.trim()) return;
     setSaving(true);
     try {
-      const res = await fetch('http://localhost:1110/save-mandate', {
+      const res = await fetch('http://localhost:1110/save-instruction', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ filename, content })
       });
@@ -402,8 +402,8 @@ function MandateModal({ activeMandate, onClose, onSaved }: any) {
         {/* Header */}
         <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50">
           <div className="flex flex-col">
-            <h2 className="text-xl font-black text-gray-900 tracking-tight">Mandate Editor</h2>
-            <p className="text-xs text-gray-500 font-medium">Draft or select a mandate to drive the CEO</p>
+            <h2 className="text-xl font-black text-gray-900 tracking-tight">Instruction Editor</h2>
+            <p className="text-xs text-gray-500 font-medium">Draft or select a instruction to drive the CEO</p>
           </div>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-black/5 hover:bg-black/10 transition-colors text-gray-500 hover:text-gray-900">✕</button>
         </div>
@@ -412,10 +412,10 @@ function MandateModal({ activeMandate, onClose, onSaved }: any) {
           {/* Left Sidebar: Templates */}
           <div className="w-56 bg-gray-50/50 border-r border-gray-100 p-4 flex flex-col gap-2">
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-2">Templates</p>
-            {(Object.keys(MANDATE_TEMPLATES) as Array<keyof typeof MANDATE_TEMPLATES>).map(k => (
+            {(Object.keys(INSTRUCTION_TEMPLATES) as Array<keyof typeof INSTRUCTION_TEMPLATES>).map(k => (
               <button key={k} onClick={()=>{setTab(k); setLoaded(false);}}
                 className={`text-left px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${tab===k?'bg-white shadow-sm text-blue-600 border border-blue-100':'text-gray-600 hover:bg-gray-100 border border-transparent'}`}>
-                {MANDATE_TEMPLATES[k].title}
+                {INSTRUCTION_TEMPLATES[k].title}
               </button>
             ))}
             <div className="w-full h-px bg-gray-200 my-2"/>
@@ -428,20 +428,20 @@ function MandateModal({ activeMandate, onClose, onSaved }: any) {
           {/* Right Area: Editor */}
           <div className="flex-1 flex flex-col p-6 bg-white min-w-0">
             <div className="flex items-center gap-3 mb-4">
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Mandate Name:</label>
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Instruction Name:</label>
               <input type="text" value={filename} onChange={e=>setFilename(e.target.value)} 
                 className="flex-1 max-w-sm px-3 py-1.5 text-sm font-mono bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 ring-blue-500/20 focus:border-blue-400 text-gray-800"
                 placeholder="project_name.md" />
             </div>
             <textarea value={content} onChange={e=>setContent(e.target.value)}
               className="flex-1 w-full bg-gray-50 rounded-2xl border border-gray-200 p-4 font-mono text-sm text-gray-800 leading-relaxed outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 resize-none shadow-inner"
-              placeholder="Write your mandate here..." />
+              placeholder="Write your instruction here..." />
 
             <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-gray-100">
               <button onClick={onClose} className="px-5 py-2 text-xs font-bold text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-all">Cancel</button>
               <button onClick={handleSave} disabled={saving||!content.trim()}
                 className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-bold text-xs shadow-md transition-all disabled:opacity-50">
-                {saving ? 'Saving...' : '💾 Save & Select Mandate'}
+                {saving ? 'Saving...' : '💾 Save & Select Instruction'}
               </button>
             </div>
           </div>
@@ -491,8 +491,8 @@ function FinalReportModal({ report, onClose }: { report: {fileName:string, conte
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function Home() {
   const [logs, setLogs]             = useState<{agent:string,msg:string}[]>([]);
-  const [mandates, setMandates]     = useState<string[]>([]);
-  const [activeMandate, setActiveMandate] = useState('');
+  const [instructions, setInstructions]     = useState<string[]>([]);
+  const [activeInstruction, setActiveInstruction] = useState('');
   const [isConnected, setIsConnected]     = useState(false);
   const [socket, setSocket]               = useState<any>(null);
   const [activeAgents, setActiveAgents]   = useState<Set<string>>(new Set());
@@ -503,7 +503,7 @@ export default function Home() {
   const [pipelinePhase, setPipelinePhase] = useState<{phase:number,total:number,label:string}|null>(null);
   const [reportCount, setReportCount]     = useState(0);
   const [pipelineState, setPipelineState] = useState<'idle'|'running'|'done'|'stopped'>('idle');
-  const [mandateModalOpen, setMandateModalOpen] = useState(false);
+  const [instructionModalOpen, setInstructionModalOpen] = useState(false);
   const [finalReport, setFinalReport] = useState<{fileName:string, content:string}|null>(null);
   const [finalReportModalOpen, setFinalReportModalOpen] = useState(false);
   
@@ -522,9 +522,9 @@ export default function Home() {
   useEffect(()=>{
     const s = io('http://localhost:1110');
     setSocket(s);
-    s.on('connect',    ()=>{ setIsConnected(true); s.emit('get_mandates'); });
+    s.on('connect',    ()=>{ setIsConnected(true); s.emit('get_instructions'); });
     s.on('disconnect', ()=>setIsConnected(false));
-    s.on('mandates_list',(data:string[])=>{ setMandates(data); if(data.length>0) setActiveMandate(data[0]); });
+    s.on('instructions_list',(data:string[])=>{ setInstructions(data); if(data.length>0) setActiveInstruction(data[0]); });
     s.on('agent_log',  (d:{agent:string,msg:string})=>setLogs(p=>[...p,d]));
     s.on('pipeline_phase',(d:any)=>{ setPipelinePhase(d); setPipelineState('running'); });
     s.on('agent_active',(d:{agent:string,active:boolean})=>{
@@ -549,12 +549,12 @@ export default function Home() {
   },[]);
 
   const launchPipeline = ()=>{
-    if(!socket||!activeMandate) return;
+    if(!socket||!activeInstruction) return;
     setFinalReport(null);
     setCompletedAgents(new Set()); setActiveAgents(new Set());
     setAgentStreams(Object.fromEntries(ALL_KEYS.map(k=>[k,'']))); setLogs([]);
     setPipelinePhase(null); setPipelineState('running'); setReportCount(0);
-    socket.emit('trigger_pipeline',{phase:'csuite',mandate:activeMandate});
+    socket.emit('trigger_pipeline',{phase:'csuite',instruction:activeInstruction});
   };
 
   const stopPipeline = ()=>{
@@ -566,11 +566,11 @@ export default function Home() {
   const handleUpload = async(e:React.ChangeEvent<HTMLInputElement>)=>{
     if(!e.target.files?.length) return;
     setUploading(true);
-    const form=new FormData(); form.append('mandate',e.target.files[0]);
+    const form=new FormData(); form.append('instruction',e.target.files[0]);
     try{
       const res=await fetch('http://localhost:1110/upload',{method:'POST',body:form});
       const d=await res.json();
-      if(d.filename&&socket){ socket.emit('get_mandates'); setActiveMandate(d.filename); }
+      if(d.filename&&socket){ socket.emit('get_instructions'); setActiveInstruction(d.filename); }
     }catch{}
     setUploading(false); e.target.value='';
   };
@@ -626,12 +626,12 @@ export default function Home() {
         />
       )}
 
-      {mandateModalOpen && (
-        <MandateModal 
-          activeMandate={activeMandate} 
-          onClose={()=>setMandateModalOpen(false)}
+      {instructionModalOpen && (
+        <InstructionModal 
+          activeInstruction={activeInstruction} 
+          onClose={()=>setInstructionModalOpen(false)}
           onSaved={(fname: string) => {
-            if (socket) { socket.emit('get_mandates'); setTimeout(()=>setActiveMandate(fname), 300); }
+            if (socket) { socket.emit('get_instructions'); setTimeout(()=>setActiveInstruction(fname), 300); }
           }} 
         />
       )}
@@ -662,7 +662,7 @@ export default function Home() {
             {/* Phase Progress */}
             <div className="flex-1 min-w-0">
               {pipelineState==='idle' && (
-                <p className="text-xs text-gray-400 font-medium">Ready — select a mandate and launch.</p>
+                <p className="text-xs text-gray-400 font-medium">Ready — select a instruction and launch.</p>
               )}
               {pipelineState==='running' && pipelinePhase && (
                 <div className="flex items-center gap-3">
@@ -701,20 +701,20 @@ export default function Home() {
             {/* Action Buttons */}
             <div className="flex items-center gap-3 flex-shrink-0 ml-auto">
               
-              {/* Type in mandate */}
-              <button onClick={()=>setMandateModalOpen(true)}
+              {/* Type in instruction */}
+              <button onClick={()=>setInstructionModalOpen(true)}
                 className="px-4 py-2 bg-gray-50 border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 text-indigo-600 rounded-xl text-xs font-bold transition-all flex items-center gap-2">
-                ✏️ Type Mandate
+                ✏️ Type Instruction
               </button>
 
               <div className="w-px h-6 bg-gray-200 flex-shrink-0 hidden xl:block"/>
 
-              {/* Mandate Selector + Upload */}
+              {/* Instruction Selector + Upload */}
               <div className="flex items-center gap-2 flex-shrink-0">
                 <div className="relative">
-                  <select value={activeMandate} onChange={e=>setActiveMandate(e.target.value)}
+                  <select value={activeInstruction} onChange={e=>setActiveInstruction(e.target.value)}
                     className="bg-white border border-gray-200 text-gray-700 rounded-xl pl-3 pr-7 py-2 text-[11px] font-bold outline-none focus:ring-2 focus:ring-blue-300 appearance-none shadow-sm max-w-[160px] truncate">
-                    {mandates.length>0?mandates.map((m,i)=><option key={i}>{m}</option>):<option>No mandates</option>}
+                    {instructions.length>0?instructions.map((m,i)=><option key={i}>{m}</option>):<option>No instructions</option>}
                   </select>
                   <span className="absolute inset-y-0 right-2 flex items-center text-gray-400 pointer-events-none text-[10px]">▾</span>
                 </div>
@@ -731,7 +731,7 @@ export default function Home() {
                 </button>
               )}
               <button onClick={launchPipeline}
-                disabled={!isConnected||pipelineState==='running'||!activeMandate}
+                disabled={!isConnected||pipelineState==='running'||!activeInstruction}
                 className="px-6 py-2 bg-gradient-to-r from-blue-500 to-violet-600 hover:from-blue-600 hover:to-violet-700 text-white rounded-xl shadow-[0_4px_12px_rgba(99,102,241,0.3)] disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:-translate-y-0.5 font-bold text-xs flex items-center gap-2">
                 {pipelineState==='running' ? <span className="animate-spin">⟳</span> : '▶'}
                 {pipelineState==='done'||pipelineState==='stopped' ? 'Run Again' : 'Launch'}

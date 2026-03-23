@@ -1,7 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  experimental: {
+    // @ts-expect-error type missing
+    turbopack: {
+      root: process.cwd(),
+    },
+  },
 };
 
 export default nextConfig;

@@ -11,11 +11,11 @@ If an AI just agrees with everything you say, it cannot build a $100M+ enterpris
 ```text
 =================================================================================
 [ LEVEL 0: THE UHNWI (The Principal) ]
-  |_ ROLE: The ultimate authority. Provides the core mandate and final Boolean [Y/N].
-  |_ FLOW: Gives mandate -> Waits -> Receives optimized synthesis -> Approves capital.
+  |_ ROLE: The ultimate authority. Provides the core instruction and final Boolean [Y/N].
+  |_ FLOW: Gives instruction -> Waits -> Receives optimized synthesis -> Approves capital.
 =================================================================================
                                       |
-   (Mandate Passed Down: "Launch a new ultra-luxury service offering")
+   (Instruction Passed Down: "Launch a new ultra-luxury service offering")
                                       v
 =================================================================================
 [ LEVEL 1: THE INNER CIRCLE (Family Office & Shield) ]
@@ -26,7 +26,7 @@ If an AI just agrees with everything you say, it cannot build a $100M+ enterpris
   |_ CISO                     -> protects physical life and vetoes insecure systems.
 =================================================================================
                                       |
-   (CoS allows Mandate to pass to Corporate)
+   (CoS allows Instruction to pass to Corporate)
                                       v
 =================================================================================
 [ LEVEL 2: THE COMPANY (Corporate Execution) ]
@@ -161,8 +161,8 @@ npm run dev
 
 **Step 4: Execute The Dynasty**
 Open your browser to `http://localhost:1110`. 
-1. Use the **"Type Mandate"** button to open the Mandate Editor and choose one of the 3 built-in templates (Aggressive Pivot, New Product Launch, Ops Overhaul), or write your own.
-2. Click **"Save & Select Mandate"**.
+1. Use the **"Type Instruction"** button to open the Instruction Editor and choose one of the 3 built-in templates (Aggressive Pivot, New Product Launch, Ops Overhaul), or write your own.
+2. Click **"Save & Select Instruction"**.
 3. Click the glowing **"Launch"** button.
 
 Watch as the 16 AI Agents light up, stream their logic across the visual node map, and physically write multi-page markdown strategies to disk in real-time.
