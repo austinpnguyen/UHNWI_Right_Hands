@@ -88,6 +88,7 @@ function AgentModal({ agent, edges, onClose, onUpdateAgent, agentStream, agentLo
   const [selectedModel, setSelectedModel] = useState('');
   const [promptContent, setPromptContent] = useState('');
   const [loadingPrompt, setLoadingPrompt] = useState(false);
+  const [humanInput, setHumanInput]     = useState('');
   const [saving, setSaving]     = useState(false);
   const [saveMsg, setSaveMsg]   = useState('');
   const outputRef = useRef<HTMLDivElement>(null);
@@ -158,7 +159,7 @@ function AgentModal({ agent, edges, onClose, onUpdateAgent, agentStream, agentLo
       <div className="absolute inset-0 bg-black/20 backdrop-blur-sm"/>
 
       {/* Modal */}
-      <div className="relative bg-white/95 backdrop-blur-2xl rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col border border-white/60 overflow-hidden"
+      <div className="relative bg-gradient-to-br from-white/80 to-white/30 backdrop-blur-3xl rounded-3xl shadow-[0_10px_60px_-15px_rgba(0,0,0,0.3)] w-full max-w-3xl max-h-[90vh] flex flex-col border border-white/60 overflow-hidden"
         onClick={e=>e.stopPropagation()}>
 
         {/* Header */}
@@ -237,12 +238,26 @@ function AgentModal({ agent, edges, onClose, onUpdateAgent, agentStream, agentLo
                             </button>
                           </h4>
                           <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest leading-relaxed">ID: <strong className="text-gray-900">{agent.key}</strong> • {agent.role}</p>
+                          <p className="text-[11px] font-bold text-gray-500 tracking-widest leading-relaxed mb-2">{agent.isHuman ? '👥 HUMAN EXECUTIVE' : '🤖 AI EXECUTIVE'}</p>
                           <p className="text-sm text-gray-500 mt-2 leading-relaxed">{agent.desc || `This agent belongs to the ${agent.div.replace('_',' ')} division. It receives inputs from upstream agents and generates specialized strategic reports.`}</p>
                         </div>
                       )}
                     </div>
                   </div>
                 </div>
+
+                {agent.isHuman && isActive && (
+                  <div className="mt-4 p-5 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-100 shadow-inner">
+                    <h4 className="text-xs font-black text-emerald-700 uppercase tracking-widest mb-1.5 flex items-center gap-2"><span className="animate-pulse w-2 h-2 bg-emerald-500 rounded-full" /> Human Webhook Required</h4>
+                    <p className="text-xs text-emerald-800/80 mb-4 font-medium">This node is completely paused. The Founder must simulate the external human response below, which will fire the \`/webhook/human/${agent.key}\` HTTP endpoint to unblock the pipeline.</p>
+                    <textarea value={humanInput} onChange={e=>setHumanInput(e.target.value)} rows={3} className="w-full text-xs p-3 rounded-xl border border-emerald-200 outline-none focus:ring-2 focus:ring-emerald-400 mb-3 bg-white/70 shadow-sm font-mono text-gray-800" placeholder="Type human executive final output..." />
+                    <button onClick={async ()=>{
+                        setSaving(true);
+                        await fetch(`http://localhost:1110/webhook/human/${agent.key}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({response:humanInput}) });
+                        setSaving(false); setHumanInput('');
+                    }} disabled={saving||!humanInput.trim()} className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-bold text-xs rounded-xl shadow-md transition-all disabled:opacity-50 hover:-translate-y-0.5">Submit Webhook Response</button>
+                  </div>
+                )}
 
                 {/* Pipeline I/O Context */}
                 <div className="mt-5 grid grid-cols-2 gap-4 border-t border-gray-200/60 pt-5">
@@ -455,7 +470,7 @@ function InstructionModal({ activeInstruction, onClose, onSaved }: any) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-6" onClick={onClose}>
       <div className="absolute inset-0 bg-black/30 backdrop-blur-md"/>
-      <div className="relative bg-white/95 backdrop-blur-2xl rounded-3xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col border border-white/60 overflow-hidden" onClick={e=>e.stopPropagation()}>
+      <div className="relative bg-gradient-to-br from-white/80 to-white/30 backdrop-blur-3xl rounded-3xl shadow-[0_10px_60px_-15px_rgba(0,0,0,0.3)] w-full max-w-5xl h-[85vh] flex flex-col border border-white/60 overflow-hidden" onClick={e=>e.stopPropagation()}>
         {/* Header */}
         <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50">
           <div className="flex flex-col">
@@ -518,9 +533,9 @@ function FinalReportModal({ report, onClose }: { report: {fileName:string, conte
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6" style={{backgroundColor:'var(--bg-black, rgba(0,0,0,0.6))', backdropFilter:'blur(8px)'}}>
-      <div className="bg-white w-full max-w-5xl h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-emerald-50 to-teal-50">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/30 backdrop-blur-md">
+      <div className="bg-gradient-to-br from-white/90 to-white/50 backdrop-blur-3xl w-full max-w-5xl h-[90vh] rounded-3xl shadow-[0_10px_60px_-15px_rgba(0,0,0,0.3)] border border-white/60 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="px-6 py-5 border-b border-white/50 flex items-center justify-between bg-emerald-50/50">
           <div className="flex items-center gap-3">
             <span className="text-2xl w-10 h-10 flex items-center justify-center rounded-2xl shadow-sm bg-emerald-100 text-emerald-600">👑</span>
             <div>
@@ -556,19 +571,20 @@ export default function Home() {
   const [expandedDivs, setExpandedDivs] = useState<Record<string,boolean>>({ company: true, inner_circle: true, shield: true, market: true });
   const [removeCandidate, setRemoveCandidate] = useState<any>(null);
   const [addModalDiv, setAddModalDiv] = useState<string|null>(null);
-  const [newAgentForm, setNewAgentForm] = useState({ key:'', label:'', role:'', icon:'🤖', color:'gray' });
+  const [newAgentForm, setNewAgentForm] = useState({ label:'', role:'', icon:'🤖', color:'gray', isHuman: false });
 
   const handleUpdateAgent = (key: string, updates: any) => {
     setAgents(prev => prev.map(a => a.key === key ? { ...a, ...updates } : a));
   };
 
   const handleHireEmployee = () => {
-    if(!newAgentForm.key || !newAgentForm.label) return;
-    const newAgent = { ...newAgentForm, div: addModalDiv, x: 825, y: Math.random()*200+300, desc: "Newly hired." };
+    if(!newAgentForm.label) return;
+    const assignedKey = `BADGE-${Math.floor(Math.random()*90000+10000)}`;
+    const newAgent = { ...newAgentForm, key: assignedKey, div: addModalDiv, x: 825, y: Math.random()*200+300, desc: newAgentForm.isHuman ? "Human Executive (Requires Webhook)" : "Newly hired AI Executive." };
     setAgents(p => [...p, newAgent]);
     setPositions(p => ({...p, [newAgent.key]: {x: newAgent.x, y: newAgent.y}}));
     setAddModalDiv(null);
-    setNewAgentForm({ key:'', label:'', role:'', icon:'🤖', color:'gray' });
+    setNewAgentForm({ label:'', role:'', icon: '🤖', color:'gray', isHuman: false });
   };
 
   const handleFireEmployee = () => {
@@ -644,13 +660,19 @@ export default function Home() {
     return ()=>{ s.close(); };
   },[]);
 
+  const handleHumanWebhook = (agentKey: string, message: string) => {
+    if (!socket) return;
+    socket.emit('human_webhook', { agentKey, message });
+  };
+
   const launchPipeline = () => {
     if(!socket || !activeInstruction) return; // Re-added socket check for safety
     setFinalReport(null);
     setCompletedAgents(new Set()); setActiveAgents(new Set());
     setAgentStreams(Object.fromEntries(ALL_KEYS.map((k: string)=>[k,'']))); setLogs([]);
-    setPipelinePhase(null); setPipelineState('running'); setReportCount(0);
-    socket.emit('trigger_pipeline',{instruction:activeInstruction, activeAgentKeys: agents.map(a=>a.key)});
+    setPipelinePhase(null);    setPipelineState('running');
+    setReportCount(0);
+    socket.emit('trigger_pipeline',{instruction:activeInstruction, activeAgentKeys: agents.map(a=>a.key), agents});
   };
 
   const stopPipeline = ()=>{
@@ -733,40 +755,34 @@ export default function Home() {
           agentLogs={agentLogs}
           activeAgents={activeAgents}
           completedAgents={completedAgents}
+          onHumanWebhook={handleHumanWebhook}
         />
       )}
 
       {/* ── Hire Executive Modal ── */}
       {addModalDiv && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-200" onPointerDown={e=>e.stopPropagation()}>
-          <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 p-8 max-w-sm w-full animate-in zoom-in-95 duration-200">
-            <h3 className="text-xl font-black text-gray-900 mb-1">Hire New Executive</h3>
-            <p className="text-xs text-gray-500 mb-6">Assigning to division: <span className="font-bold text-indigo-600 uppercase">{addModalDiv.replace('_', ' ')}</span></p>
-            
+          <div className="bg-gradient-to-br from-white/90 to-white/60 backdrop-blur-3xl rounded-3xl shadow-[0_10px_50px_-15px_rgba(0,0,0,0.4)] border border-white/60 p-8 max-w-sm w-full animate-in zoom-in-95 duration-200">
+            <h3 className="text-xl font-bold mb-4 text-gray-900 border-b border-white/50 pb-3">Hire New Executive ({addModalDiv})</h3>
             <div className="space-y-4">
+              <label className="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors">
+                <input type="checkbox" className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                  checked={newAgentForm.isHuman} onChange={e=>setNewAgentForm(p=>({...p, isHuman: e.target.checked, icon: e.target.checked ? '👤' : '🤖'}))} />
+                <span className="text-sm font-bold text-gray-700">This is a Human Executive (Requires Webhook)</span>
+              </label>
               <div>
-                <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1.5">Agent Key (ID)</label>
-                <input type="text" value={newAgentForm.key} onChange={e=>setNewAgentForm(p=>({...p, key:e.target.value}))} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g. CTO" />
+                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 ml-1">Full Name</label>
+                <input type="text" value={newAgentForm.label} onChange={e=>setNewAgentForm(p=>({...p, label:e.target.value}))} className="w-full px-4 py-2 border border-gray-200 rounded-xl bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 font-bold" placeholder="e.g. Austin Nguyen" />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1.5">Full Label / Name</label>
-                <input type="text" value={newAgentForm.label} onChange={e=>setNewAgentForm(p=>({...p, label:e.target.value}))} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g. Chief Tech Officer" />
-              </div>
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1.5">Role / Focus</label>
-                  <input type="text" value={newAgentForm.role} onChange={e=>setNewAgentForm(p=>({...p, role:e.target.value}))} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g. Server Scaling" />
-                </div>
-                <div className="w-16">
-                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1.5">Icon</label>
-                  <input type="text" value={newAgentForm.icon} onChange={e=>setNewAgentForm(p=>({...p, icon:e.target.value}))} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-2 py-2.5 text-center text-lg font-bold text-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none" />
-                </div>
+                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 ml-1">Assigned Role</label>
+                <input type="text" value={newAgentForm.role} onChange={e=>setNewAgentForm(p=>({...p, role:e.target.value}))} className="w-full px-4 py-2 border border-gray-200 rounded-xl bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none text-sm text-gray-800" placeholder="e.g. Oversees Engineering" />
               </div>
             </div>
 
             <div className="flex gap-3 mt-8">
               <button onClick={()=>setAddModalDiv(null)} className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold rounded-xl text-xs transition-colors">Cancel</button>
-              <button onClick={handleHireEmployee} disabled={!newAgentForm.key || !newAgentForm.label} className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs transition-colors shadow-lg disabled:opacity-50">Hire Employee</button>
+              <button onClick={handleHireEmployee} disabled={!newAgentForm.label} className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs transition-colors shadow-lg disabled:opacity-50">Hire Employee</button>
             </div>
           </div>
         </div>
@@ -783,7 +799,7 @@ export default function Home() {
             <p className="text-sm text-gray-500 leading-relaxed mb-8">
               Are you sure you want to fire <span className="font-bold text-gray-800">{removeCandidate.key}</span> from the <span className="uppercase font-bold text-gray-800">{removeCandidate.div.replace('_', ' ')}</span> division? This will instantly sever all intelligence links and remove them from the canvas.
             </p>
-            
+
             <div className="flex gap-3">
               <button onClick={()=>setRemoveCandidate(null)} className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold rounded-xl text-xs transition-colors">Cancel</button>
               <button onClick={handleFireEmployee} className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl text-xs transition-colors shadow-lg shadow-red-500/30">Yes, Fire Them</button>
@@ -793,12 +809,12 @@ export default function Home() {
       )}
 
       {instructionModalOpen && (
-        <InstructionModal 
-          activeInstruction={activeInstruction} 
+        <InstructionModal
+          activeInstruction={activeInstruction}
           onClose={()=>setInstructionModalOpen(false)}
           onSaved={(fname: string) => {
             if (socket) { socket.emit('get_instructions'); setTimeout(()=>setActiveInstruction(fname), 300); }
-          }} 
+          }}
         />
       )}
 
@@ -812,7 +828,7 @@ export default function Home() {
       <div className="fixed bottom-[-10%] left-[25%] w-[600px] h-[600px] bg-pink-100  rounded-full mix-blend-multiply filter blur-[150px] opacity-25 animate-blob animation-delay-4000 pointer-events-none z-0"/>
 
       {/* ── Top Navigation Bar ── */}
-      <nav className="fixed top-0 left-0 right-0 h-16 border-b border-gray-200 bg-white/90 backdrop-blur-md z-50 shadow-sm px-6 flex items-center justify-between">
+      <nav className="fixed top-0 left-0 right-0 h-16 border-b border-white/40 bg-gradient-to-b from-white/60 to-white/30 backdrop-blur-2xl z-50 shadow-sm px-6 flex items-center justify-between">
          {/* Brand */}
          <div className="flex items-center gap-3 flex-shrink-0">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-600 to-blue-600 shadow-inner flex items-center justify-center text-white font-bold text-lg">U</div>
@@ -868,7 +884,7 @@ export default function Home() {
              {pipelineState==='running' && (
                <button onClick={stopPipeline} className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-500 border border-red-200 rounded-xl text-xs font-bold shadow-sm">⛔ Stop</button>
              )}
-             
+
              <button onClick={launchPipeline} disabled={!isConnected||pipelineState==='running'||!activeInstruction}
                className="px-6 py-2 bg-gradient-to-r from-blue-500 to-violet-600 hover:from-blue-600 text-white rounded-xl shadow-md disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold flex items-center gap-2 transition-all">
                {pipelineState==='running' ? <span className="animate-spin">⟳</span> : '▶'}
@@ -884,15 +900,16 @@ export default function Home() {
          </div>
       </nav>
 
-      {/* ── Left Toggle Button (Slim) ── */}
-      <button onClick={()=>setIsLeftPanelOpen(!isLeftPanelOpen)} 
-        className={`fixed top-1/2 -translate-y-1/2 z-[45] flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] bg-white/60 hover:bg-white backdrop-blur-xl border border-gray-200 shadow-sm touch-none rounded-r-xl border-l-0 isolate overflow-hidden group ${isLeftPanelOpen ? 'left-72 w-5 h-20' : 'left-0 w-3 hover:w-5 h-24'}`}>
-        <div className={`w-0.5 h-8 bg-gray-400 rounded-full transition-all group-hover:bg-blue-400 ${isLeftPanelOpen ? 'bg-blue-300' : ''}`} />
+      {/* ── Left Toggle Button (Frosted Pill) ── */}
+      <button onClick={()=>setIsLeftPanelOpen(!isLeftPanelOpen)}
+        className={`fixed top-1/2 -translate-y-1/2 z-[45] flex flex-col items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] bg-gradient-to-br from-white/80 to-white/40 backdrop-blur-3xl border border-white/60 shadow-[4px_0_24px_-8px_rgba(0,0,0,0.15)] hover:shadow-[8px_0_30px_-8px_rgba(0,0,0,0.25)] touch-none rounded-r-3xl isolate overflow-hidden group ${isLeftPanelOpen ? 'left-72 w-8 h-24 border-l-0' : 'left-0 w-12 hover:w-16 h-36 border-l-0 hover:bg-white/80'}`}>
+        <span className="text-xl mb-1 text-gray-500 group-hover:text-blue-500 transition-colors duration-500">{isLeftPanelOpen ? '‹' : '🏛️'}</span>
+        {!isLeftPanelOpen && <span className="text-[10px] font-black text-gray-400 group-hover:text-blue-500 uppercase tracking-[0.2em] mt-1 transition-colors duration-500" style={{writingMode:'vertical-rl',textOrientation:'mixed'}}>ORG MAP</span>}
       </button>
 
       {/* ── Left Sidebar (Company Hierarchy) ── */}
-      <aside className={`fixed top-16 left-0 bottom-0 w-72 bg-white/90 backdrop-blur-2xl border-r border-white/60 shadow-2xl flex flex-col z-40 transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${isLeftPanelOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="h-14 border-b border-gray-100 flex items-center px-5 bg-gray-50/50">
+      <aside className={`fixed top-16 left-0 bottom-0 w-72 bg-gradient-to-br from-white/70 to-white/20 backdrop-blur-3xl border-r border-white/50 shadow-2xl flex flex-col z-40 transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${isLeftPanelOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="h-14 border-b border-white/40 flex items-center px-5 bg-white/30 backdrop-blur-md">
           <h2 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
             🏛️ Hierarchy
           </h2>
@@ -923,7 +940,7 @@ export default function Home() {
                           <div className={`w-6 h-6 rounded-md flex items-center justify-center text-[11px] ${C[a.color]?.ic||C.gray.ic} mr-2`}>{a.icon}</div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-bold text-gray-900 flex items-center gap-1">
-                              {a.key} 
+                              {a.key}
                               {isActive && <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"/>}
                               {isDone && !isActive && <span className="text-emerald-500 text-[9px]">✓</span>}
                             </p>

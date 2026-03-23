@@ -12,6 +12,20 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const humanWaiters = {};
+
+app.post('/webhook/human/:agentKey', express.json(), (req, res) => {
+    const key = req.params.agentKey;
+    const { response } = req.body;
+    if (humanWaiters[key]) {
+        humanWaiters[key](response || `[SYSTEM] Human executive ${key} approved and completed the task.`);
+        delete humanWaiters[key];
+        res.json({ status: 'ok', msg: `Agent ${key} resumed via webhook.` });
+    } else {
+        res.status(404).json({ error: 'No active pipeline waiting for this agent.' });
+    }
+});
+
 // ─── Directories ────────────────────────────────────────────────────────────
 const INPUT_DIR  = path.join(__dirname, '../00_FOUNDER_INSTRUCTION');
 const CONFIG_PATH = path.join(__dirname, 'agent_config.json');
@@ -142,6 +156,27 @@ async function runAgent({ socket, agentKey, userMessage, outputPath, fallbackSys
         return '';
     }
 
+    if (isHuman) {
+        socket.emit('agent_log', { agent: agentKey, msg: `[${agentKey}] PAUSED: Awaiting Human Input via Webhook (POST /webhook/human/${agentKey})` });
+        socket.emit('agent_active', { agent: agentKey, active: true });
+        socket.emit('agent_stream', { agent: agentKey, chunk: `**[SYSTEM PAUSE]**\n\nThis agent is designated as a **Human Executive**.\nThe AI pipeline has halted execution for this node.\n\nTo resume, contact the human and have them submit a response via Webhook:\n\`POST http://localhost:1110/webhook/human/${agentKey}\`\n\n\`\`\`json\n{\n  "response": "The human's actual work output goes here..."\n}\n\`\`\`\n\n` });
+
+        const humanOutput = await new Promise(resolve => {
+            humanWaiters[agentKey] = resolve;
+        });
+
+        const finalOutput = `**[HUMAN EXECUTIVE RESPONSE]**\n\n${humanOutput}`;
+        socket.emit('agent_stream', { agent: agentKey, chunk: `\n\n${finalOutput}` });
+
+        const outDir = path.dirname(outputPath);
+        if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
+        fs.writeFileSync(outputPath, finalOutput);
+
+        socket.emit('agent_log', { agent: agentKey, msg: `[${agentKey}] Human Webhook Received -> ${path.basename(outputPath)}` });
+        socket.emit('agent_active', { agent: agentKey, active: false });
+        return finalOutput;
+    }
+
     if (socket.cancelled) throw new Error('STOPPED');
 
     socket.emit('agent_log',    { agent: agentKey, msg: `[${agentKey}] Starting on ${model}...` });
@@ -228,7 +263,8 @@ io.on('connection', (socket) => {
         if (!data.instruction) return;
         socket.cancelled = false;
         
-        const activeKeys = data.activeAgentKeys || ['CEO', 'CPO', 'CFO', 'CMO', 'COO', 'CIO', 'AUDITOR', 'CLO', 'MKT_ANALYST', 'COMPETITOR', 'TARGET_BUYER', 'UNAWARE', 'COS', 'CISO', 'FIXER', 'WHISPERER'];
+        const activeKeys = data.activeAgentKeys || [];
+        const agentsMap = data.agents ? Object.fromEntries(data.agents.map(a => [a.key, a])) : {};
         
         const instructionContent = fs.readFileSync(path.join(INPUT_DIR, data.instruction), 'utf8');
         const outDir = path.join(__dirname, '../company_files/thoughts', data.instruction.replace(/\.(md|txt)$/, ''));
@@ -248,7 +284,8 @@ io.on('connection', (socket) => {
                 socket.emit('agent_stream', { agent: agentKey, chunk: `*This department has been terminated or is currently inactive. No intelligence provided.*` });
                 return `[TERMINATED BY FOUNDER]`;
             }
-            return await runAgent({ socket, agentKey, userMessage, outputPath: path.join(outDir, `${agentKey}_${hrTag}.md`), fallbackSystem });
+            const agentNode = agentsMap[agentKey] || {};
+            return await runAgent({ socket, agentKey, userMessage, outputPath: path.join(outDir, `${agentKey}_${hrTag}.md`), fallbackSystem, isHuman: !!agentNode.isHuman });
         };
 
         try {
