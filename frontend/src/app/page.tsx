@@ -4,373 +4,323 @@ import io from 'socket.io-client';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-// Full agent roster mirroring the /agents/ directory structure
-const HIERARCHY = [
-  {
-    division: 'COMPANY',
-    icon: '🏛️',
-    agents: [
-      { key: 'CEO', label: 'CEO', role: 'Master Plan Synthesizer', icon: '♟️', color: 'blue',   file: 'ceo.md' },
-      { key: 'CPO', label: 'CPO', role: 'System Architecture',     icon: '🛠️', color: 'indigo', file: 'cpo.md', parent: 'CEO' },
-      { key: 'CFO', label: 'CFO', role: 'Financial Engineering',   icon: '📈', color: 'emerald',file: 'cfo.md', parent: 'CEO' },
-      { key: 'CMO', label: 'CMO', role: 'Brand & Market Strategy', icon: '📣', color: 'pink',   file: 'cmo.md', parent: 'CEO' },
-      { key: 'COO', label: 'COO', role: 'Operational Logistics',   icon: '⚙️', color: 'orange', file: 'coo.md', parent: 'CEO' },
-    ],
-  },
-  {
-    division: 'INNER CIRCLE',
-    icon: '🔐',
-    agents: [
-      { key: 'COS',        label: 'Chief of Staff', role: 'Strategic Execution',  icon: '📋', color: 'violet' },
-      { key: 'CIO',        label: 'CIO',            role: 'Tech Infrastructure',   icon: '💻', color: 'blue' },
-      { key: 'CISO',       label: 'CISO',           role: 'Security & Privacy',    icon: '🛡️', color: 'slate' },
-      { key: 'FIXER',      label: 'The Fixer',      role: 'Crisis Resolution',     icon: '🔧', color: 'amber' },
-      { key: 'WHISPERER',  label: 'The Whisperer',  role: 'Intelligence & Recon',  icon: '👁️', color: 'purple' },
-    ],
-  },
-  {
-    division: 'MARKET',
-    icon: '📡',
-    agents: [
-      { key: 'MARKET_ANALYST',   label: 'Market Analyst',      role: 'Competitive Intelligence', icon: '🔍', color: 'blue' },
-      { key: 'COMPETITOR_SIM',   label: 'Competitor Simulator', role: 'Adversarial Modelling',   icon: '⚔️', color: 'red' },
-      { key: 'TARGET_BUYER',     label: 'Target Buyer',         role: 'Buyer Psychology',         icon: '🎯', color: 'emerald' },
-      { key: 'UNAWARE_AUDIENCE', label: 'Unaware Audience',     role: 'Cold Market Simulation',   icon: '🌐', color: 'gray' },
-    ],
-  },
-  {
-    division: 'SHIELD',
-    icon: '⚖️',
-    agents: [
-      { key: 'AUDITOR', label: 'Auditor', role: 'Financial Compliance',  icon: '📊', color: 'amber' },
-      { key: 'CLO',     label: 'CLO',     role: 'Legal Strategy & Risk', icon: '⚖️', color: 'slate' },
-    ],
-  },
+// --- Agent definitions
+const AGENTS = [
+  { key: 'CEO', label: 'CEO',        role: 'Master Plan Synthesizer', icon: '♟️', color: 'blue',    x: 460, y: 60  },
+  { key: 'CPO', label: 'CPO',        role: 'System Architecture',     icon: '🛠️', color: 'indigo',  x: 60,  y: 280 },
+  { key: 'CFO', label: 'CFO',        role: 'Financial Engineering',   icon: '📈', color: 'emerald', x: 310, y: 280 },
+  { key: 'CMO', label: 'CMO',        role: 'Brand Strategy',          icon: '📣', color: 'pink',    x: 560, y: 280 },
+  { key: 'COO', label: 'COO',        role: 'Operations',              icon: '⚙️', color: 'orange',  x: 810, y: 280 },
 ];
 
-// Agents that participate in the c-suite pipeline, in display order
-const PIPELINE_AGENTS = ['CEO', 'CPO', 'CFO', 'CMO', 'COO'];
-const ALL_AGENT_KEYS  = HIERARCHY.flatMap(d => d.agents.map(a => a.key));
+// Edges: CEO fans out to all C-Suite
+const EDGES = [
+  { from: 'CEO', to: 'CPO' },
+  { from: 'CEO', to: 'CFO' },
+  { from: 'CEO', to: 'CMO' },
+  { from: 'CEO', to: 'COO' },
+];
 
-// Per-color Tailwind class bundles
-const COLOR_VARIANTS: Record<string, { activeBorder: string; activeBg: string; badge: string; dot: string; cursor: string; icon: string }> = {
-  blue:    { activeBorder: 'ring-blue-400 border-blue-300 shadow-[0_0_25px_rgba(96,165,250,0.4)]',     activeBg: 'bg-blue-50/60',    badge: 'bg-blue-100 text-blue-700 ring-blue-200',     dot: 'bg-blue-500',    cursor: 'bg-blue-500',    icon: 'bg-blue-100 text-blue-600' },
-  indigo:  { activeBorder: 'ring-indigo-400 border-indigo-300 shadow-[0_0_25px_rgba(129,140,248,0.4)]', activeBg: 'bg-indigo-50/60',  badge: 'bg-indigo-100 text-indigo-700 ring-indigo-200', dot: 'bg-indigo-500',  cursor: 'bg-indigo-500',  icon: 'bg-indigo-100 text-indigo-600' },
-  emerald: { activeBorder: 'ring-emerald-400 border-emerald-300 shadow-[0_0_25px_rgba(52,211,153,0.4)]', activeBg: 'bg-emerald-50/60', badge: 'bg-emerald-100 text-emerald-700 ring-emerald-200', dot: 'bg-emerald-500', cursor: 'bg-emerald-500', icon: 'bg-emerald-100 text-emerald-600' },
-  pink:    { activeBorder: 'ring-pink-400 border-pink-300 shadow-[0_0_25px_rgba(244,114,182,0.4)]',     activeBg: 'bg-pink-50/60',    badge: 'bg-pink-100 text-pink-700 ring-pink-200',     dot: 'bg-pink-500',    cursor: 'bg-pink-500',    icon: 'bg-pink-100 text-pink-600' },
-  orange:  { activeBorder: 'ring-orange-400 border-orange-300 shadow-[0_0_25px_rgba(251,146,60,0.4)]',  activeBg: 'bg-orange-50/60',  badge: 'bg-orange-100 text-orange-700 ring-orange-200', dot: 'bg-orange-500',  cursor: 'bg-orange-500',  icon: 'bg-orange-100 text-orange-600' },
-  violet:  { activeBorder: 'ring-violet-400 border-violet-300 shadow-[0_0_25px_rgba(167,139,250,0.4)]', activeBg: 'bg-violet-50/60',  badge: 'bg-violet-100 text-violet-700 ring-violet-200', dot: 'bg-violet-500',  cursor: 'bg-violet-500',  icon: 'bg-violet-100 text-violet-600' },
-  purple:  { activeBorder: 'ring-purple-400 border-purple-300 shadow-[0_0_25px_rgba(192,132,252,0.4)]', activeBg: 'bg-purple-50/60',  badge: 'bg-purple-100 text-purple-700 ring-purple-200', dot: 'bg-purple-500',  cursor: 'bg-purple-500',  icon: 'bg-purple-100 text-purple-600' },
-  slate:   { activeBorder: 'ring-slate-400 border-slate-300 shadow-[0_0_25px_rgba(148,163,184,0.4)]',  activeBg: 'bg-slate-50/60',   badge: 'bg-slate-100 text-slate-700 ring-slate-200',   dot: 'bg-slate-500',   cursor: 'bg-slate-500',   icon: 'bg-slate-100 text-slate-600' },
-  amber:   { activeBorder: 'ring-amber-400 border-amber-300 shadow-[0_0_25px_rgba(251,191,36,0.4)]',   activeBg: 'bg-amber-50/60',   badge: 'bg-amber-100 text-amber-700 ring-amber-200',   dot: 'bg-amber-500',   cursor: 'bg-amber-500',   icon: 'bg-amber-100 text-amber-600' },
-  red:     { activeBorder: 'ring-red-400 border-red-300 shadow-[0_0_25px_rgba(248,113,113,0.4)]',      activeBg: 'bg-red-50/60',     badge: 'bg-red-100 text-red-700 ring-red-200',       dot: 'bg-red-500',     cursor: 'bg-red-500',     icon: 'bg-red-100 text-red-600' },
-  gray:    { activeBorder: 'ring-gray-400 border-gray-300 shadow-[0_0_25px_rgba(156,163,175,0.4)]',    activeBg: 'bg-gray-50/60',    badge: 'bg-gray-100 text-gray-700 ring-gray-200',     dot: 'bg-gray-500',    cursor: 'bg-gray-500',    icon: 'bg-gray-100 text-gray-600' },
+const NODE_W = 200;
+const NODE_H = 90;
+
+const COLORS: Record<string, {
+  ring: string; glow: string; dot: string; badge: string; header: string; icon: string; edge: string;
+}> = {
+  blue:    { ring:'ring-blue-400',    glow:'shadow-[0_0_20px_rgba(96,165,250,0.5)]',   dot:'bg-blue-500',    badge:'bg-blue-100 text-blue-700',    header:'from-blue-50',    icon:'bg-blue-100 text-blue-600',   edge:'#60A5FA' },
+  indigo:  { ring:'ring-indigo-400',  glow:'shadow-[0_0_20px_rgba(129,140,248,0.5)]',  dot:'bg-indigo-500',  badge:'bg-indigo-100 text-indigo-700', header:'from-indigo-50',  icon:'bg-indigo-100 text-indigo-600', edge:'#818CF8' },
+  emerald: { ring:'ring-emerald-400', glow:'shadow-[0_0_20px_rgba(52,211,153,0.5)]',   dot:'bg-emerald-500', badge:'bg-emerald-100 text-emerald-700',header:'from-emerald-50', icon:'bg-emerald-100 text-emerald-600', edge:'#34D399' },
+  pink:    { ring:'ring-pink-400',    glow:'shadow-[0_0_20px_rgba(244,114,182,0.5)]',  dot:'bg-pink-500',    badge:'bg-pink-100 text-pink-700',    header:'from-pink-50',    icon:'bg-pink-100 text-pink-600',   edge:'#F472B6' },
+  orange:  { ring:'ring-orange-400',  glow:'shadow-[0_0_20px_rgba(251,146,60,0.5)]',   dot:'bg-orange-500',  badge:'bg-orange-100 text-orange-700', header:'from-orange-50',  icon:'bg-orange-100 text-orange-600', edge:'#FB923C' },
 };
 
+const ALL_KEYS = AGENTS.map(a => a.key);
+
 export default function Home() {
-  const [logs, setLogs]         = useState<{agent: string, msg: string}[]>([]);
-  const [mandates, setMandates] = useState<string[]>([]);
+  const [logs, setLogs]             = useState<{agent:string,msg:string}[]>([]);
+  const [mandates, setMandates]     = useState<string[]>([]);
   const [activeMandate, setActiveMandate] = useState('');
   const [isConnected, setIsConnected]     = useState(false);
   const [socket, setSocket]               = useState<any>(null);
-
-  // activeAgents is now a Set — multiple agents can run simultaneously
   const [activeAgents, setActiveAgents]   = useState<Set<string>>(new Set());
-  const [agentStreams, setAgentStreams]    = useState<Record<string, string>>(Object.fromEntries(ALL_AGENT_KEYS.map(k => [k, ''])));
   const [completedAgents, setCompletedAgents] = useState<Set<string>>(new Set());
+  const [agentStreams, setAgentStreams]    = useState<Record<string,string>>(Object.fromEntries(ALL_KEYS.map(k=>[k,''])));
+  const [selectedAgent, setSelectedAgent] = useState<string|null>(null);
+  const [uploading, setUploading]         = useState(false);
+  const logsRef = useRef<HTMLDivElement>(null);
 
-  const [uploading, setUploading] = useState(false);
-  const logsRef   = useRef<HTMLDivElement>(null);
-  const agentRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  useEffect(()=>{ if(logsRef.current) logsRef.current.scrollTop=logsRef.current.scrollHeight; },[logs]);
 
-  // Auto-scroll log panel
-  useEffect(() => {
-    if (logsRef.current) logsRef.current.scrollTop = logsRef.current.scrollHeight;
-  }, [logs]);
-
-  // Auto-scroll individual agent panels as tokens arrive
-  useEffect(() => {
-    activeAgents.forEach(key => {
-      const el = agentRefs.current[key];
-      if (el) el.scrollTop = el.scrollHeight;
-    });
-  }, [agentStreams, activeAgents]);
-
-  useEffect(() => {
+  useEffect(()=>{
     const s = io('http://localhost:8080');
     setSocket(s);
-
-    s.on('connect',    () => { setIsConnected(true); s.emit('get_mandates'); });
-    s.on('disconnect', () => setIsConnected(false));
-
-    s.on('mandates_list', (data: string[]) => {
-      setMandates(data);
-      if (data.length > 0) setActiveMandate(data[0]);
-    });
-
-    s.on('agent_log', (data: {agent: string, msg: string}) =>
-      setLogs(p => [...p, data]));
-
-    // agent_active now carries { agent, active: boolean }
-    s.on('agent_active', (data: {agent: string, active: boolean}) => {
-      setActiveAgents(prev => {
-        const next = new Set(prev);
-        if (data.active) {
-          // Clear previous stream when this agent starts
-          setAgentStreams(p => ({ ...p, [data.agent]: '' }));
-          next.add(data.agent);
-        } else {
-          next.delete(data.agent);
-          setCompletedAgents(p => new Set([...p, data.agent]));
-        }
+    s.on('connect',    ()=>{ setIsConnected(true); s.emit('get_mandates'); });
+    s.on('disconnect', ()=>setIsConnected(false));
+    s.on('mandates_list',(data:string[])=>{ setMandates(data); if(data.length>0) setActiveMandate(data[0]); });
+    s.on('agent_log',  (d:{agent:string,msg:string})=>setLogs(p=>[...p,d]));
+    s.on('agent_active',(d:{agent:string,active:boolean})=>{
+      setActiveAgents(prev=>{
+        const next=new Set(prev);
+        if(d.active){ setAgentStreams(p=>({...p,[d.agent]:''})); next.add(d.agent); }
+        else{ next.delete(d.agent); setCompletedAgents(p=>new Set([...p,d.agent])); }
         return next;
       });
     });
-
-    s.on('agent_stream', (data: {agent: string, chunk: string}) =>
-      setAgentStreams(p => ({ ...p, [data.agent]: p[data.agent] + data.chunk })));
-
-    s.on('pipeline_complete', (data: {phase: string}) => {
-      setLogs(p => [...p, { agent: 'System', msg: `Pipeline [${data.phase.toUpperCase()}] complete.` }]);
+    s.on('agent_stream',(d:{agent:string,chunk:string})=>
+      setAgentStreams(p=>({...p,[d.agent]:p[d.agent]+d.chunk})));
+    s.on('pipeline_complete',(d:{phase:string})=>{
+      setLogs(p=>[...p,{agent:'System',msg:`Pipeline [${d.phase.toUpperCase()}] complete.`}]);
       setActiveAgents(new Set());
     });
+    return ()=>{ s.close(); };
+  },[]);
 
-    return () => { s.close(); };
-  }, []);
-
-  const triggerPipeline = () => {
-    if (!socket || !activeMandate) return;
+  const launchPipeline = ()=>{
+    if(!socket||!activeMandate) return;
     setCompletedAgents(new Set());
     setActiveAgents(new Set());
-    setAgentStreams(Object.fromEntries(ALL_AGENT_KEYS.map(k => [k, ''])));
+    setAgentStreams(Object.fromEntries(ALL_KEYS.map(k=>[k,''])));
+    setSelectedAgent(null);
     setLogs([]);
-    socket.emit('trigger_pipeline', { phase: 'csuite', mandate: activeMandate });
+    socket.emit('trigger_pipeline',{phase:'csuite',mandate:activeMandate});
   };
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files?.length) return;
+  const handleUpload = async(e:React.ChangeEvent<HTMLInputElement>)=>{
+    if(!e.target.files?.length) return;
     setUploading(true);
-    const form = new FormData();
-    form.append('mandate', e.target.files[0]);
-    try {
-      const res  = await fetch('http://localhost:8080/upload', { method: 'POST', body: form });
-      const data = await res.json();
-      if (data.filename && socket) {
-        socket.emit('get_mandates');
-        setActiveMandate(data.filename);
-        setLogs(p => [...p, { agent: 'System', msg: `Mandate uploaded: ${data.filename}` }]);
-      }
-    } catch {
-      setLogs(p => [...p, { agent: 'ERROR', msg: 'Upload failed. Is the backend running?' }]);
-    }
-    setUploading(false);
-    e.target.value = '';
+    const form=new FormData(); form.append('mandate',e.target.files[0]);
+    try{
+      const res=await fetch('http://localhost:8080/upload',{method:'POST',body:form});
+      const d=await res.json();
+      if(d.filename&&socket){ socket.emit('get_mandates'); setActiveMandate(d.filename); setLogs(p=>[...p,{agent:'System',msg:`Uploaded: ${d.filename}`}]); }
+    }catch{ setLogs(p=>[...p,{agent:'ERROR',msg:'Upload failed.'}]); }
+    setUploading(false); e.target.value='';
   };
+
+  // Canvas dimensions
+  const CANVAS_W = 1060;
+  const CANVAS_H = 420;
+
+  // Compute bezier path between two nodes (bottom-center of from, top-center of to)
+  const bezierPath = (from: typeof AGENTS[0], to: typeof AGENTS[0]) => {
+    const x1 = from.x + NODE_W / 2;
+    const y1 = from.y + NODE_H;
+    const x2 = to.x + NODE_W / 2;
+    const y2 = to.y;
+    const cy = (y1 + y2) / 2;
+    return `M ${x1} ${y1} C ${x1} ${cy}, ${x2} ${cy}, ${x2} ${y2}`;
+  };
+
+  const selectedDef  = AGENTS.find(a => a.key === selectedAgent);
 
   return (
     <div className="min-h-screen bg-[#f5f5f7] font-sans relative overflow-x-hidden">
+      {/* Ambient blobs */}
+      <div className="fixed top-[-15%] left-[-10%]  w-[600px] h-[600px] bg-blue-200   rounded-full mix-blend-multiply filter blur-[130px] opacity-40 animate-blob pointer-events-none z-0"/>
+      <div className="fixed top-[-10%] right-[-10%] w-[500px] h-[500px] bg-purple-200  rounded-full mix-blend-multiply filter blur-[120px] opacity-35 animate-blob animation-delay-2000 pointer-events-none z-0"/>
+      <div className="fixed bottom-[-10%] left-[20%] w-[600px] h-[600px] bg-pink-100  rounded-full mix-blend-multiply filter blur-[150px] opacity-25 animate-blob animation-delay-4000 pointer-events-none z-0"/>
 
-      {/* Ambient gradient blobs */}
-      <div className="fixed top-[-15%] left-[-10%]  w-[600px] h-[600px] bg-blue-300   rounded-full mix-blend-multiply filter blur-[130px] opacity-30 animate-blob                     pointer-events-none z-0"/>
-      <div className="fixed top-[-10%] right-[-10%] w-[500px] h-[500px] bg-purple-300  rounded-full mix-blend-multiply filter blur-[120px] opacity-30 animate-blob animation-delay-2000 pointer-events-none z-0"/>
-      <div className="fixed bottom-[-20%] left-[25%] w-[700px] h-[700px] bg-pink-200  rounded-full mix-blend-multiply filter blur-[150px] opacity-20 animate-blob animation-delay-4000 pointer-events-none z-0"/>
-
-      <div className="relative z-10 max-w-screen-2xl mx-auto px-4 py-8 flex flex-col gap-6">
+      <div className="relative z-10 max-w-screen-2xl mx-auto px-6 py-8 flex flex-col gap-6">
 
         {/* ── Header ── */}
-        <header className="bg-white/75 backdrop-blur-2xl border border-white/50 shadow-sm rounded-3xl px-8 py-5 flex justify-between items-center">
+        <header className="bg-white/80 backdrop-blur-2xl border border-white/60 shadow-sm rounded-3xl px-8 py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-violet-600 to-pink-500">Dynasty OS</h1>
-            <p className="text-xs font-semibold text-gray-400 mt-0.5 tracking-widest uppercase">Multi-Agent Orchestration Engine · V7</p>
+            <h1 className="text-xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-violet-500 to-pink-500">Dynasty OS</h1>
+            <p className="text-[10px] font-bold text-gray-400 tracking-widest uppercase mt-0.5">Execution Canvas · V8</p>
           </div>
-          <div className="flex items-center gap-2 bg-white/90 px-4 py-2 rounded-full border border-gray-100 shadow-sm">
-            <span className="relative flex h-2.5 w-2.5">
-              {isConnected && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"/>}
-              <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}/>
-            </span>
-            <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">{isConnected ? 'Online' : 'Offline'}</span>
+          <div className="flex items-center gap-4">
+            {/* Status */}
+            <div className="flex items-center gap-2 bg-white/90 px-3 py-1.5 rounded-full border border-gray-100 shadow-sm">
+              <span className="relative flex h-2 w-2">
+                {isConnected && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"/>}
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${isConnected?'bg-green-500':'bg-red-400'}`}/>
+              </span>
+              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{isConnected?'Live':'Offline'}</span>
+            </div>
+            {/* Agents running badge */}
+            {activeAgents.size > 0 && (
+              <div className="px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-full flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse"/>
+                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">{activeAgents.size} running</span>
+              </div>
+            )}
           </div>
         </header>
 
+        {/* ── Main Layout ── */}
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
 
-          {/* ── LEFT SIDEBAR ── */}
+          {/* LEFT: Controls ── */}
           <div className="xl:col-span-3 flex flex-col gap-5">
 
-            {/* Control Center */}
-            <div className="bg-white/75 backdrop-blur-2xl border border-white/50 shadow-sm rounded-3xl p-5 flex flex-col gap-4">
-              <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2"><span>⚡</span>Control Center</h2>
+            <div className="bg-white/80 backdrop-blur-2xl border border-white/60 shadow-sm rounded-3xl p-5 flex flex-col gap-4">
+              <h2 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2"><span>⚡</span>Control Center</h2>
 
               <div>
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Upload Mandate (.md / .txt)</label>
-                <label className={`flex items-center justify-center gap-2 w-full border-2 border-dashed border-gray-200 hover:border-blue-400 rounded-2xl py-3.5 cursor-pointer transition-all ${uploading ? 'opacity-60' : ''}`}>
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Upload Mandate</label>
+                <label className={`flex items-center justify-center gap-2 w-full border-2 border-dashed border-gray-200 hover:border-blue-300 rounded-2xl py-3.5 cursor-pointer transition-all text-xs text-gray-400 ${uploading?'opacity-60':''}`}>
                   <input type="file" accept=".md,.txt" className="hidden" onChange={handleUpload} disabled={uploading}/>
-                  <span className="text-gray-400 text-xs">{uploading ? '⏳ Uploading…' : '📎 Drop or click to upload'}</span>
+                  {uploading?'⏳ Uploading…':'📎 Drop or click to upload'}
                 </label>
               </div>
 
               <div>
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Active Mandate</label>
                 <div className="relative">
-                  <select value={activeMandate} onChange={e => setActiveMandate(e.target.value)}
-                    className="w-full bg-white border border-gray-200 text-gray-800 rounded-xl px-3 py-2.5 text-xs outline-none focus:ring-2 focus:ring-blue-400 appearance-none shadow-sm font-medium">
-                    {mandates.length > 0 ? mandates.map((m, i) => <option key={i}>{m}</option>) : <option>No mandates found</option>}
+                  <select value={activeMandate} onChange={e=>setActiveMandate(e.target.value)}
+                    className="w-full bg-white border border-gray-200 text-gray-800 rounded-xl px-3 py-2.5 text-xs outline-none focus:ring-2 focus:ring-blue-300 appearance-none shadow-sm font-medium">
+                    {mandates.length>0?mandates.map((m,i)=><option key={i}>{m}</option>):<option>No mandates found</option>}
                   </select>
                   <span className="absolute inset-y-0 right-2 flex items-center text-gray-400 pointer-events-none text-xs">▾</span>
                 </div>
               </div>
 
-              <button onClick={triggerPipeline}
-                disabled={!isConnected || activeAgents.size > 0 || !activeMandate}
-                className="w-full py-3.5 bg-gradient-to-r from-blue-500 to-violet-600 hover:from-blue-600 hover:to-violet-700 text-white rounded-2xl shadow-[0_8px_20px_rgba(99,102,241,0.3)] disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:-translate-y-0.5 font-bold text-xs tracking-wide flex justify-between items-center px-4 group">
-                <span>{activeAgents.size > 0 ? `${activeAgents.size} agent(s) running…` : 'Launch Agent Chain'}</span>
+              <button onClick={launchPipeline}
+                disabled={!isConnected||activeAgents.size>0||!activeMandate}
+                className="w-full py-3.5 bg-gradient-to-r from-blue-500 to-violet-600 hover:from-blue-600 hover:to-violet-700 text-white rounded-2xl shadow-[0_8px_20px_rgba(99,102,241,0.25)] disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:-translate-y-0.5 font-bold text-xs tracking-wide flex justify-between items-center px-4 group">
+                {activeAgents.size>0?<span>{activeAgents.size} agent(s) thinking…</span>:<span>Launch Agent Chain</span>}
                 <span className="group-hover:translate-x-1 transition-transform">→</span>
               </button>
             </div>
 
-            {/* Org Chart Hierarchy */}
-            <div className="bg-white/75 backdrop-blur-2xl border border-white/50 shadow-sm rounded-3xl p-5">
-              <h2 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2"><span>🏢</span>Org Chart</h2>
-              <div className="space-y-5 font-mono text-xs">
-                {HIERARCHY.map(div => (
-                  <div key={div.division}>
-                    <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1">
-                      <span>{div.icon}</span> {div.division}
-                    </div>
-                    <div className="space-y-1 pl-1">
-                      {div.agents.map(agent => {
-                        const isActive  = activeAgents.has(agent.key);
-                        const isDone    = completedAgents.has(agent.key);
-                        const isChild   = !!agent.parent;
-                        const c         = COLOR_VARIANTS[agent.color] || COLOR_VARIANTS.gray;
-                        return (
-                          <div key={agent.key}
-                            className={`flex items-center gap-2 px-2 py-1.5 rounded-xl transition-all duration-300 ${isActive ? `${c.activeBg} ring-1 ${c.activeBorder}` : 'hover:bg-gray-50'}`}>
-                            <span className="text-gray-300 select-none">{isChild ? '|_' : '└'}</span>
-                            <span className={`w-5 h-5 rounded-lg flex items-center justify-center text-[10px] flex-shrink-0 ${c.icon}`}>{agent.icon}</span>
-                            <span className={`font-bold transition-colors flex-1 ${isActive ? 'text-gray-900' : isDone ? 'text-emerald-600' : 'text-gray-500'}`}>{agent.label}</span>
-                            {isActive && <span className={`h-2 w-2 rounded-full animate-pulse ${c.dot}`}/>}
-                            {isDone && !isActive && <span className="text-emerald-500 text-[10px]">✓</span>}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Live Activity Log */}
-            <div className="bg-white/75 backdrop-blur-2xl border border-white/50 shadow-sm rounded-3xl p-5 flex flex-col">
-              <div className="flex justify-between items-center mb-3">
-                <h2 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2"><span>📡</span>Live Activity</h2>
-                <button onClick={() => navigator.clipboard.writeText(logs.map(l => `[${l.agent}] ${l.msg}`).join('\n'))}
+            {/* Live Activity */}
+            <div className="bg-white/80 backdrop-blur-2xl border border-white/60 shadow-sm rounded-3xl p-5 flex flex-col gap-3">
+              <div className="flex justify-between items-center">
+                <h2 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">📡 Live Activity</h2>
+                <button onClick={()=>navigator.clipboard.writeText(logs.map(l=>`[${l.agent}] ${l.msg}`).join('\n'))}
                   className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-white border border-gray-200 text-gray-400 hover:text-blue-500 hover:border-blue-300 transition-colors shadow-sm">
                   COPY
                 </button>
               </div>
-              <div ref={logsRef} className="overflow-y-auto bg-gray-50/80 rounded-2xl border border-gray-100 p-3 font-mono text-[11px] space-y-2 shadow-inner max-h-[300px]">
-                {logs.map((log, i) => (
-                  <div key={i} className={`leading-relaxed ${/error/i.test(log.agent) ? 'text-red-500' : 'text-gray-500'}`}>
-                    <span className="font-bold text-blue-500">[{log.agent}]</span> {log.msg}
+              <div ref={logsRef} className="overflow-y-auto bg-gray-50 rounded-2xl border border-gray-100 p-3 font-mono text-[11px] space-y-1.5 shadow-inner max-h-[280px]">
+                {logs.map((l,i)=>(
+                  <div key={i} className={`leading-relaxed ${/error/i.test(l.agent)?'text-red-500':'text-gray-500'}`}>
+                    <span className="font-bold text-blue-500">[{l.agent}]</span> {l.msg}
                   </div>
                 ))}
-                {logs.length === 0 && <div className="text-gray-400 text-center py-6 text-[11px]">Idle. Launch to begin.</div>}
+                {logs.length===0&&<div className="text-gray-400 text-center py-4">Idle.</div>}
               </div>
             </div>
 
           </div>
 
-          {/* ── RIGHT: Agent Output Panels ── */}
-          {/* 
-            Phase 1 (CEO) renders alone at full width.
-            Phase 2 (CPO, CFO, CMO, COO) renders in a 2-column grid once any of
-            them have started, showing that they ran in parallel.
-          */}
-          <div className="xl:col-span-9 flex flex-col gap-6">
+          {/* RIGHT: Canvas ── */}
+          <div className="xl:col-span-9 flex flex-col gap-5">
 
-            {/* CEO — always displayed alone */}
-            {(() => {
-              const agentDef = HIERARCHY[0].agents.find(a => a.key === 'CEO')!;
-              const isActive = activeAgents.has('CEO');
-              const hasDone  = agentStreams['CEO'].length > 0;
-              const c        = COLOR_VARIANTS[agentDef.color];
-              return (
-                <div className={`bg-white/75 backdrop-blur-2xl border rounded-3xl overflow-hidden transition-all duration-500 shadow-sm
-                  ${isActive ? `ring-2 scale-[1.003] ${c.activeBorder}` : 'border-white/50 hover:shadow-md'}`}>
-                  <AgentHeader agentDef={agentDef} isActive={isActive} hasDone={hasDone} c={c} phase="Phase 1"/>
-                  <div ref={el => { agentRefs.current['CEO'] = el; }}
-                    className="overflow-y-auto bg-white/40 px-8 py-6 max-h-[60vh] prose prose-sm max-w-none text-gray-700 markdown-body">
-                    <AgentContent text={agentStreams['CEO']} isActive={isActive} cursor={c.cursor}
-                      placeholder="Launch Agent Chain to begin." />
-                  </div>
+            {/* Node Canvas */}
+            <div className="bg-white/80 backdrop-blur-2xl border border-white/60 shadow-sm rounded-3xl overflow-hidden relative">
+              {/* Subtle dot grid background */}
+              <div className="absolute inset-0 opacity-30" style={{backgroundImage:'radial-gradient(circle, #d1d5db 1px, transparent 1px)',backgroundSize:'28px 28px'}}/>
+
+              <div className="relative overflow-auto p-6">
+                <svg width={CANVAS_W} height={CANVAS_H} className="absolute top-0 left-0 pointer-events-none" style={{padding:'24px'}}>
+                  {EDGES.map(edge=>{
+                    const from = AGENTS.find(a=>a.key===edge.from)!;
+                    const to   = AGENTS.find(a=>a.key===edge.to)!;
+                    const toColor = COLORS[AGENTS.find(a=>a.key===edge.to)!.color];
+                    const isActive = activeAgents.has(edge.to);
+                    const isDone   = completedAgents.has(edge.to);
+                    return (
+                      <g key={`${edge.from}-${edge.to}`}>
+                        {/* Base path */}
+                        <path d={bezierPath(from,to)} fill="none"
+                          stroke={isDone||isActive ? toColor.edge : '#e5e7eb'}
+                          strokeWidth={isActive?2.5:1.5}
+                          strokeDasharray={isActive?"8 4":"none"}
+                          strokeLinecap="round"
+                          style={isActive?{animation:'dashMove 0.8s linear infinite'}:{}}
+                        />
+                      </g>
+                    );
+                  })}
+                  <style>{`@keyframes dashMove{to{stroke-dashoffset:-24}}`}</style>
+                </svg>
+
+                {/* Node Cards */}
+                <div className="relative" style={{width:CANVAS_W, height:CANVAS_H}}>
+                  {AGENTS.map(agent=>{
+                    const c         = COLORS[agent.color];
+                    const isActive  = activeAgents.has(agent.key);
+                    const isDone    = completedAgents.has(agent.key);
+                    const isSelected= selectedAgent === agent.key;
+                    return (
+                      <div key={agent.key}
+                        onClick={()=>setSelectedAgent(isSelected?null:agent.key)}
+                        className={`absolute cursor-pointer rounded-2xl border bg-white transition-all duration-300 select-none
+                          ${isActive   ? `ring-2 ${c.ring} ${c.glow} border-transparent scale-105` : ''}
+                          ${isSelected ? `ring-2 ${c.ring} border-transparent` : 'border-gray-200 hover:border-gray-300 hover:shadow-md'}
+                          ${!isActive&&!isSelected ? 'shadow-sm' : ''}
+                        `}
+                        style={{left:agent.x, top:agent.y, width:NODE_W, height:NODE_H}}>
+
+                        {/* Card header */}
+                        <div className={`flex items-center justify-between px-4 pt-3 pb-2 rounded-t-2xl bg-gradient-to-b ${c.header} to-transparent`}>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-base w-7 h-7 flex items-center justify-center rounded-xl ${c.icon}`}>{agent.icon}</span>
+                            <span className="font-bold text-gray-900 text-sm">{agent.label}</span>
+                          </div>
+                          {isActive  && <span className={`h-2.5 w-2.5 rounded-full animate-pulse ${c.dot}`}/>}
+                          {isDone && !isActive && <span className="text-emerald-500 text-xs font-bold">✓</span>}
+                        </div>
+
+                        {/* Card body */}
+                        <div className="px-4 pb-3">
+                          <p className="text-[10px] text-gray-400 font-semibold">{agent.role}</p>
+                          {isActive && (
+                            <div className="mt-1.5 h-1 w-full bg-gray-100 rounded-full overflow-hidden">
+                              <div className={`h-full rounded-full ${c.dot} opacity-70`} style={{width:'60%', animation:'pulse 1s infinite'}}/>
+                            </div>
+                          )}
+                          {isDone && !isActive && (
+                            <p className="text-[10px] text-emerald-500 font-bold mt-1">Done · click to read</p>
+                          )}
+                          {!isActive && !isDone && (
+                            <p className="text-[10px] text-gray-300 mt-1">Idle</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })()}
-
-            {/* C-Suite (parallel) — shown in a 2-column grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {['CPO', 'CFO', 'CMO', 'COO'].map(key => {
-                const agentDef = HIERARCHY[0].agents.find(a => a.key === key)!;
-                const isActive = activeAgents.has(key);
-                const hasDone  = agentStreams[key].length > 0;
-                const c        = COLOR_VARIANTS[agentDef.color];
-                return (
-                  <div key={key} className={`bg-white/75 backdrop-blur-2xl border rounded-3xl overflow-hidden transition-all duration-500 shadow-sm
-                    ${isActive ? `ring-2 scale-[1.003] ${c.activeBorder}` : 'border-white/50 hover:shadow-md'}`}>
-                    <AgentHeader agentDef={agentDef} isActive={isActive} hasDone={hasDone} c={c} phase="Phase 2 · Parallel"/>
-                    <div ref={el => { agentRefs.current[key] = el; }}
-                      className="overflow-y-auto bg-white/40 px-6 py-5 max-h-[50vh] prose prose-sm max-w-none text-gray-700 markdown-body">
-                      <AgentContent text={agentStreams[key]} isActive={isActive} cursor={c.cursor}
-                        placeholder="Awaiting CEO Master Plan handoff…" />
-                    </div>
-                  </div>
-                );
-              })}
+              </div>
             </div>
 
+            {/* Output Panel — shows when a node is selected */}
+            {selectedDef && (
+              <div className={`bg-white/80 backdrop-blur-2xl border border-white/60 shadow-sm rounded-3xl overflow-hidden transition-all
+                ${activeAgents.has(selectedDef.key) ? `ring-2 ${COLORS[selectedDef.color].ring}` : ''}`}>
+                <div className={`px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-b ${COLORS[selectedDef.color].header} to-transparent`}>
+                  <div className="flex items-center gap-3">
+                    <span className={`text-xl w-9 h-9 flex items-center justify-center rounded-2xl shadow-sm ${COLORS[selectedDef.color].icon}`}>{selectedDef.icon}</span>
+                    <div>
+                      <h3 className="font-bold text-gray-900">{selectedDef.label}</h3>
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{selectedDef.role}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {activeAgents.has(selectedDef.key) && (
+                      <span className={`flex items-center gap-1.5 text-[10px] font-bold uppercase px-3 py-1.5 rounded-full animate-pulse ${COLORS[selectedDef.color].badge}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${COLORS[selectedDef.color].dot}`}/>Thinking
+                      </span>
+                    )}
+                    <button onClick={()=>setSelectedAgent(null)} className="text-gray-400 hover:text-gray-600 text-lg leading-none">✕</button>
+                  </div>
+                </div>
+                <div className="overflow-y-auto px-8 py-6 max-h-[60vh] prose prose-sm max-w-none text-gray-700 markdown-body bg-white/40">
+                  {agentStreams[selectedDef.key]
+                    ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{agentStreams[selectedDef.key]}</ReactMarkdown>
+                    : <p className="text-gray-400 italic">No output yet. Launch the Agent Chain first.</p>
+                  }
+                  {activeAgents.has(selectedDef.key) && (
+                    <span className={`inline-block w-2 h-4 ml-1 align-middle rounded-sm animate-pulse ${COLORS[selectedDef.color].dot}`}/>
+                  )}
+                </div>
+              </div>
+            )}
+
           </div>
         </div>
       </div>
     </div>
-  );
-}
-
-// ── Shared sub-components ────────────────────────────────────────────────────
-
-function AgentHeader({ agentDef, isActive, hasDone, c, phase }: any) {
-  return (
-    <div className={`px-6 py-4 flex items-center justify-between border-b border-gray-100 transition-colors duration-500 ${isActive ? c.activeBg : 'bg-white/30'}`}>
-      <div className="flex items-center gap-3">
-        <div className={`${c.icon} p-2.5 rounded-2xl text-xl shadow-sm`}>{agentDef.icon}</div>
-        <div>
-          <div className="flex items-center gap-2">
-            <h3 className="font-bold text-gray-900 tracking-tight">{agentDef.label}</h3>
-            <span className="text-[9px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full uppercase tracking-widest">{phase}</span>
-          </div>
-          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{agentDef.role}</p>
-        </div>
-      </div>
-      <div className="flex items-center gap-2">
-        {isActive && (
-          <span className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full ring-1 animate-pulse ${c.badge}`}>
-            <span className={`h-1.5 w-1.5 rounded-full animate-pulse ${c.dot}`}/>Thinking
-          </span>
-        )}
-        {hasDone && !isActive && (
-          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full ring-1 ring-emerald-200">✓ Done</span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function AgentContent({ text, isActive, cursor, placeholder }: { text: string; isActive: boolean; cursor: string; placeholder: string }) {
-  if (!text) return <p className="text-gray-400 italic text-sm">{isActive ? 'Receiving data…' : placeholder}</p>;
-  return (
-    <>
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
-      {isActive && <span className={`inline-block w-2 h-4 ml-1 align-middle rounded-sm animate-pulse ${cursor}`}/>}
-    </>
   );
 }
