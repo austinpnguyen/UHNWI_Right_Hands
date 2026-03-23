@@ -69,6 +69,23 @@ function saveConfig(config) {
     fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
 }
 
+const STATE_PATH = path.join(__dirname, 'system_state.json');
+
+// ─── REST: System State ───────────────────────────────────────────────────────
+app.get('/system-state', (req, res) => {
+    if (!fs.existsSync(STATE_PATH)) {
+        res.json({ agents: null, divisions: null });
+    } else {
+        res.json(JSON.parse(fs.readFileSync(STATE_PATH, 'utf8')));
+    }
+});
+
+app.put('/system-state', (req, res) => {
+    const { agents, divisions } = req.body;
+    fs.writeFileSync(STATE_PATH, JSON.stringify({ agents, divisions }, null, 2));
+    res.json({ ok: true });
+});
+
 // ─── REST: Agent config ───────────────────────────────────────────────────────
 app.get('/agent-config', (req, res) => {
     res.json(loadConfig());

@@ -94,7 +94,7 @@ function AgentModal({ agent, edges, onClose, onUpdateAgent, agentStream, agentLo
   const outputRef = useRef<HTMLDivElement>(null);
 
   const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [profileForm, setProfileForm] = useState({ label: agent.label, role: agent.role });
+  const [profileForm, setProfileForm] = useState({ key: agent.key, label: agent.label, role: agent.role, email: agent.email || '', phone: agent.phone || '' });
 
   const c = C[agent.color] || C.gray;
   const isActive = activeAgents.has(agent.key);
@@ -216,17 +216,20 @@ function AgentModal({ agent, edges, onClose, onUpdateAgent, agentStream, agentLo
                     <div className="flex-1">
                       {isEditingProfile ? (
                         <div className="space-y-2 mb-3">
-                          <input type="text" value={profileForm.label} onChange={e=>setProfileForm(p=>({...p, label:e.target.value}))} className="w-full text-lg font-bold bg-white border border-gray-200 rounded-lg px-3 py-1 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Agent Name" />
-                          <input type="text" value={profileForm.role} onChange={e=>setProfileForm(p=>({...p, role:e.target.value}))} className="w-full text-sm font-bold bg-white border border-gray-200 rounded-lg px-3 py-1 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Agent Role" />
-                          <div className="flex gap-2 mt-2">
+                          <input type="text" value={profileForm.label} onChange={e=>setProfileForm(p=>({...p, label:e.target.value}))} className="w-full text-lg font-bold bg-white/50 backdrop-blur-md border border-gray-200 rounded-lg px-3 py-1.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-sans" placeholder="Agent Name" />
+                          <input type="text" value={profileForm.key} onChange={e=>setProfileForm(p=>({...p, key:e.target.value}))} className="w-full text-xs font-mono font-bold bg-white/50 backdrop-blur-md border border-gray-200 rounded-lg px-3 py-1.5 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="System ID (e.g. BADGE-1234)" />
+                          <input type="text" value={profileForm.role} onChange={e=>setProfileForm(p=>({...p, role:e.target.value}))} className="w-full text-sm font-bold bg-white/50 backdrop-blur-md border border-gray-200 rounded-lg px-3 py-1.5 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="Agent Role" />
+                          <input type="email" value={profileForm.email} onChange={e=>setProfileForm(p=>({...p, email:e.target.value}))} className="w-full text-sm font-medium bg-white/50 backdrop-blur-md border border-gray-200 rounded-lg px-3 py-1.5 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="Email Address" />
+                          <input type="text" value={profileForm.phone} onChange={e=>setProfileForm(p=>({...p, phone:e.target.value}))} className="w-full text-sm font-medium bg-white/50 backdrop-blur-md border border-gray-200 rounded-lg px-3 py-1.5 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="Phone Number" />
+                          <div className="flex gap-2 mt-2 pt-1">
                             <button onClick={()=>{
                               onUpdateAgent(agent.key, profileForm);
                               setIsEditingProfile(false);
-                            }} className="text-[10px] font-bold bg-blue-600 text-white px-3 py-1.5 rounded-md hover:bg-blue-700">Save Profile</button>
+                            }} className="flex-1 text-[10px] font-bold bg-blue-600 text-white px-3 py-2 rounded-md hover:bg-blue-700 shadow-sm transition-all">Save Profile</button>
                             <button onClick={()=>{
-                              setProfileForm({ label: agent.label, role: agent.role });
+                              setProfileForm({ key: agent.key, label: agent.label, role: agent.role, email: agent.email||'', phone: agent.phone||'' });
                               setIsEditingProfile(false);
-                            }} className="text-[10px] font-bold bg-gray-100 text-gray-600 px-3 py-1.5 rounded-md hover:bg-gray-200">Cancel</button>
+                            }} className="flex-1 text-[10px] font-bold bg-gray-100 text-gray-600 px-3 py-2 rounded-md hover:bg-gray-200 shadow-sm transition-all">Cancel</button>
                           </div>
                         </div>
                       ) : (
@@ -238,7 +241,13 @@ function AgentModal({ agent, edges, onClose, onUpdateAgent, agentStream, agentLo
                             </button>
                           </h4>
                           <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest leading-relaxed">ID: <strong className="text-gray-900">{agent.key}</strong> • {agent.role}</p>
-                          <p className="text-[11px] font-bold text-gray-500 tracking-widest leading-relaxed mb-2">{agent.isHuman ? '👥 HUMAN EXECUTIVE' : '🤖 AI EXECUTIVE'}</p>
+                          {(agent.email || agent.phone) && (
+                            <p className="text-[11px] font-medium text-gray-500 mt-1 flex items-center gap-3">
+                              {agent.email && <span>📧 {agent.email}</span>}
+                              {agent.phone && <span>📱 {agent.phone}</span>}
+                            </p>
+                          )}
+                          <p className="text-[11px] font-bold text-gray-500 tracking-widest leading-relaxed mt-2 mb-2">{agent.isHuman ? '👥 HUMAN EXECUTIVE' : '🤖 AI EXECUTIVE'}</p>
                           <p className="text-sm text-gray-500 mt-2 leading-relaxed">{agent.desc || `This agent belongs to the ${agent.div.replace('_',' ')} division. It receives inputs from upstream agents and generates specialized strategic reports.`}</p>
                         </div>
                       )}
@@ -560,10 +569,25 @@ function FinalReportModal({ report, onClose }: { report: {fileName:string, conte
   );
 }
 
+const DEFAULT_DIVISIONS = [
+  { id: 'company', name: 'C-Suite' },
+  { id: 'inner_circle', name: 'Inner Circle' },
+  { id: 'shield', name: 'The Shield' },
+  { id: 'market', name: 'The Market' }
+];
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function Home() {
   const [agents, setAgents] = useState<any[]>(INITIAL_AGENTS);
   const [edges, setEdges] = useState<any[]>(INITIAL_EDGES);
+  const [divisions, setDivisions] = useState(DEFAULT_DIVISIONS);
+
+  const [editingDiv, setEditingDiv] = useState<string|null>(null);
+  const [divEditName, setDivEditName] = useState('');
+
+  const saveSystemState = async (newAgents: any[], newDivs: any[]) => {
+    try { await fetch('http://localhost:1110/system-state', { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ agents: newAgents, divisions: newDivs }) }); } catch(err){}
+  };
 
   const agentMap = Object.fromEntries(agents.map(a=>[a.key,a]));
   const ALL_KEYS = agents.map(a=>a.key);
@@ -573,25 +597,39 @@ export default function Home() {
   const [addModalDiv, setAddModalDiv] = useState<string|null>(null);
   const [newAgentForm, setNewAgentForm] = useState({ label:'', role:'', icon:'🤖', color:'gray', isHuman: false });
 
-  const handleUpdateAgent = (key: string, updates: any) => {
-    setAgents(prev => prev.map(a => a.key === key ? { ...a, ...updates } : a));
+  const handleUpdateAgent = (oldKey: string, updates: any) => {
+    let newAgents = [...agents];
+    if (updates.key && updates.key !== oldKey) {
+       newAgents = newAgents.map(a => a.key === oldKey ? { ...a, ...updates } : a);
+       setPositions(p => { const np = {...p}; np[updates.key] = np[oldKey]; delete np[oldKey]; return np; });
+       setEdges(e => e.map(edge => ({ from: edge.from === oldKey ? updates.key : edge.from, to: edge.to === oldKey ? updates.key : edge.to })));
+       setModalAgent(updates.key);
+    } else {
+       newAgents = newAgents.map(a => a.key === oldKey ? { ...a, ...updates } : a);
+    }
+    setAgents(newAgents);
+    saveSystemState(newAgents, divisions);
   };
 
   const handleHireEmployee = () => {
     if(!newAgentForm.label) return;
     const assignedKey = `BADGE-${Math.floor(Math.random()*90000+10000)}`;
     const newAgent = { ...newAgentForm, key: assignedKey, div: addModalDiv, x: 825, y: Math.random()*200+300, desc: newAgentForm.isHuman ? "Human Executive (Requires Webhook)" : "Newly hired AI Executive." };
-    setAgents(p => [...p, newAgent]);
+    const newAgents = [...agents, newAgent];
+    setAgents(newAgents);
     setPositions(p => ({...p, [newAgent.key]: {x: newAgent.x, y: newAgent.y}}));
     setAddModalDiv(null);
     setNewAgentForm({ label:'', role:'', icon: '🤖', color:'gray', isHuman: false });
+    saveSystemState(newAgents, divisions);
   };
 
   const handleFireEmployee = () => {
     if(!removeCandidate) return;
-    setAgents(p => p.filter(a => a.key !== removeCandidate.key));
+    const newAgents = agents.filter(a => a.key !== removeCandidate.key);
+    setAgents(newAgents);
     setEdges(p => p.filter(e => e.from !== removeCandidate.key && e.to !== removeCandidate.key));
     setRemoveCandidate(null);
+    saveSystemState(newAgents, divisions);
   };
 
   const [socket, setSocket] = useState<any>(null);
@@ -632,6 +670,14 @@ export default function Home() {
   useEffect(()=>{ if(logsRef.current) logsRef.current.scrollTop=logsRef.current.scrollHeight; },[logs]);
 
   useEffect(()=>{
+    fetch('http://localhost:1110/system-state').then(r=>r.json()).then(data => {
+      if (data.agents && data.agents.length > 0) {
+        setAgents(data.agents);
+        setPositions(Object.fromEntries(data.agents.map((a:any) => [a.key, {x: a.x, y: a.y}])));
+      }
+      if (data.divisions && data.divisions.length > 0) setDivisions(data.divisions);
+    }).catch(()=>{});
+
     const s = io('http://localhost:1110');
     setSocket(s);
     s.on('connect',    ()=>{ setIsConnected(true); s.emit('get_instructions'); });
@@ -727,6 +773,18 @@ export default function Home() {
     if (draggingNode) {
       setDraggingNode(null);
       e.currentTarget.releasePointerCapture(e.pointerId);
+      // Wait for React batch to settle geometry into positions, then save
+      setTimeout(() => {
+         setPositions(currentPos => {
+           const p = currentPos[draggingNode];
+           if(p) {
+              const newAgents = agents.map(a => a.key === draggingNode ? { ...a, x: p.x, y: p.y } : a);
+              setAgents(newAgents);
+              saveSystemState(newAgents, divisions);
+           }
+           return currentPos;
+         });
+      }, 0);
     }
   };
 
@@ -915,16 +973,34 @@ export default function Home() {
           </h2>
         </div>
         <div className="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-4">
-          {['company', 'inner_circle', 'shield', 'market'].map(divKey => {
+          {divisions.map(div => {
+            const divKey = div.id;
             const divAgents = agents.filter(a => a.div === divKey);
-            const divNames = { company:'C-Suite', inner_circle:'Inner Circle', shield:'The Shield', market:'The Market' };
             const isExpanded = expandedDivs[divKey];
             return (
               <div key={divKey}>
-                <div className="flex items-center justify-between group cursor-pointer mb-1 border-b border-gray-100 pb-1" onClick={() => setExpandedDivs(p => ({...p, [divKey]: !p[divKey]}))}>
-                   <h3 className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{divNames[divKey as keyof typeof divNames]}</h3>
+                <div className="flex items-center justify-between group cursor-pointer mb-1 border-b border-gray-100 pb-1" onClick={() => !editingDiv && setExpandedDivs(p => ({...p, [divKey]: !p[divKey]}))}>
+                  {editingDiv === divKey ? (
+                    <input type="text" autoFocus value={divEditName} 
+                      onClick={e=>e.stopPropagation()}
+                      onChange={e=>setDivEditName(e.target.value)}
+                      onBlur={()=>{
+                        if(divEditName.trim() && divEditName !== div.name) {
+                          const newDivs = divisions.map(d=>d.id===divKey?{...d,name:divEditName}:d);
+                          setDivisions(newDivs); saveSystemState(agents, newDivs);
+                        }
+                        setEditingDiv(null);
+                      }}
+                      onKeyDown={e=>{ if(e.key==='Enter') e.currentTarget.blur(); if(e.key==='Escape') setEditingDiv(null); }}
+                      className="text-[9px] font-bold uppercase tracking-widest bg-white/60 border border-gray-300 rounded px-1.5 py-0.5 outline-none text-gray-900 w-32 shadow-inner" />
+                  ) : (
+                    <h3 className="text-[9px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5 hover:text-gray-600 transition-colors">
+                      {div.name}
+                      <button onClick={e=>{e.stopPropagation(); setEditingDiv(divKey); setDivEditName(div.name);}} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-500 transition-opacity">✎</button>
+                    </h3>
+                  )}
                    <div className="flex items-center gap-1">
-                     <button onClick={(e) => { e.stopPropagation(); setAddModalDiv(divKey); }} className="text-gray-400 hover:text-blue-500 hover:bg-white rounded px-2 text-lg leading-none transition-colors">+</button>
+                     <button onClick={(e) => { e.stopPropagation(); setAddModalDiv(divKey); }} className="text-gray-400 hover:text-blue-500 hover:bg-white/50 rounded px-2 text-lg leading-none transition-colors">+</button>
                      <span className="text-gray-300 text-[10px] w-4 text-center">{isExpanded ? '▼' : '▶'}</span>
                    </div>
                 </div>
@@ -960,8 +1036,15 @@ export default function Home() {
         </div>
       </aside>
 
+      {/* ── Right Toggle Button (Frosted Pill) ── */}
+      <button onClick={()=>setIsRightPanelOpen(!isRightPanelOpen)}
+        className={`fixed top-1/2 -translate-y-1/2 z-[45] flex flex-col items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] bg-gradient-to-bl from-white/80 to-white/40 backdrop-blur-3xl border border-white/60 shadow-[-4px_0_24px_-8px_rgba(0,0,0,0.15)] hover:shadow-[-8px_0_30px_-8px_rgba(0,0,0,0.25)] touch-none rounded-l-3xl isolate overflow-hidden group ${isRightPanelOpen ? 'right-80 w-8 h-24 border-r-0' : 'right-0 w-12 hover:w-16 h-36 border-r-0 hover:bg-white/80'}`}>
+        <span className="text-xl mb-1 text-gray-500 group-hover:text-blue-500 transition-colors duration-500">{isRightPanelOpen ? '›' : '📡'}</span>
+        {!isRightPanelOpen && <span className="text-[10px] font-black text-gray-400 group-hover:text-blue-500 uppercase tracking-[0.2em] mt-1 transition-colors duration-500" style={{writingMode:'vertical-rl',textOrientation:'mixed',transform:'rotate(180deg)'}}>LIVE LOGS</span>}
+      </button>
+
       {/* ── Right Sidebar (Live Activity Logs) ── */}
-      <aside className={`fixed top-16 right-0 bottom-0 w-80 bg-white/90 backdrop-blur-2xl border-l border-white/60 shadow-2xl flex flex-col z-40 transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${isRightPanelOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+      <aside className={`fixed top-16 right-0 bottom-0 w-80 bg-gradient-to-bl from-white/70 to-white/20 backdrop-blur-3xl border-l border-white/50 shadow-2xl flex flex-col z-40 transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${isRightPanelOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="h-14 border-b border-gray-100 flex items-center justify-between px-5 bg-gray-50/50">
           <h2 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
