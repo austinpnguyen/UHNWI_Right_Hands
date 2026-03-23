@@ -99,66 +99,51 @@ Instead of one "helpful assistant," this system divides responsibility into four
 - `auditor.md`: An emotionless polygraph that catches the CEO if they lie about Market testing.
 - `clo.md` (Chief Legal Officer): Vetoes campaigns that risk lawsuits or FTC violations.
 
-## 🚀 How to Run This OS (The Default Method)
-This framework is built natively for **Agentic AI Workspaces** (AntiGravity, Cursor, Windsurf, Claude Code). You do not need to code. You are the Commander typing to a super-intelligence that has access to your local folder.
+## 🚀 How to Run Dynasty OS (V2 Node.js Architecture)
 
-**Step 0: Installation & Setup**
-To bring this OS to your computer, clone the repository:
+This framework is now powered by a **React Next.js Frontend** and an **Event-Driven Node.js Backend**. You must run both components simultaneously in separate terminal tabs to connect the UI to the AI brain.
+
+**Step 0: Clone & Settings**
 ```bash
 git clone https://github.com/austinpnguyen/UHNWI_Right_Hands.git
 cd UHNWI_Right_Hands
 ```
 
-**Step 1: Set Up AI Credentials**
-Navigate to the `backend/` folder, copy the example environment file, and add your Together AI key:
+**Step 1: Set Up AI Credentials (Backend)**
+Navigate to the `backend/` folder and create your environment file to supply the `TOGETHER_API_KEY` for the LLM inference engine.
 ```bash
 cd backend
 cp .env.example .env
 ```
 *(Open `.env` and paste your `TOGETHER_API_KEY`)*
 
-**Step 2: Launch The Node.js Event Bus (Backend)**
-Install dependencies and run the core Orchestrator on Port 8080:
+**Step 2: Launch The Node.js Core (Terminal 1)**
+In your first terminal, install the dependencies and start the backend Event Broker. **Leave this terminal running in the background.**
 ```bash
 cd backend
-npm install express socket.io cors together-ai dotenv
+npm install
 node server.js
 ```
+*You should see `[SYSTEM] Dynasty OS Backend running on :8080`. Keep this tab open.*
 
-**Step 3: Launch The Next.js Command Center (Frontend)**
-Open a second terminal, navigate to `frontend/`, install dependencies, and launch the React UI:
+**Step 3: Launch The Next.js Command Center (Terminal 2)**
+Open a **brand new Terminal tab** (e.g., press `Cmd + T` on Mac), navigate to the frontend folder, and launch the React UI.
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-**Step 4: Execute The Company**
-Open your browser to `http://localhost:3000`. Drop any Mandate `.md` file into `00_FOUNDER_INPUT/`. Select it on the dashboard and click **Awaken C-Suite**. You will watch the LLMs stream logic via WebSocket and physically write Master Plan documents into `company_files/crucible_testing/`.
+**Step 4: Execute The Dynasty**
+Open your browser to `http://localhost:3000`. 
+1. Use the **"Type Mandate"** button to open the Mandate Editor and choose one of the 3 built-in templates (Aggressive Pivot, New Product Launch, Ops Overhaul), or write your own.
+2. Click **"Save & Select Mandate"**.
+3. Click the glowing **"Launch"** button.
 
-**Step 3: Trigger The Crucible (Level 3)**
-Once the Master Plan is generated, feed it to the wolves:
-> *"Adopt the personas of The Market (`agents/market/`). Brutally attack the `master_plan_v1.md` file you just generated. Do not hold back. You are a skeptical rich buyer and a ruthless competitor. Save the psychological, legal, and pricing failures to `company_files/feedback_logs/market_rejections.md`."*
+Watch as the 16 AI Agents light up, stream their logic across the visual node map, and physically write multi-page markdown strategies to disk in real-time.
 
-**Step 4: The Shield / Audit (Level 4)**
-> *"Adopt the personas of The Shield (`agents/shield/`). Audit the market feedback. Evaluate if the Founder should execute this or kill it. Present your final Boolean verdict to the Founder."*
+---
 
-## 🐍 Headless Python Orchestration (Custom API Integration)
-If you are a developer and wish to run the agents autonomously in the background without a chat interface, we provide a Python Orchestration skeleton.
-
-If you are using **AntiGravity** or wish to run the agents autonomously in the background, you can trigger the Python Orchestration Engine from your terminal:
-- `make run-csuite`: Wakes up the C-Suite to construct the Master Plan.
-- `make run-market`: Pushes the V1 Plan into the Crucible for brutal testing.
-- `make run-audit`: Deploys The Shield to review the feedback logs.
-- `make run-all`: Executes the entire pipeline synchronously.
-- `make daemon`: Runs the Python Engine indefinitely in the background, waiting for new mandates in `00_FOUNDER_INPUT/` to execute asynchronously while interacting with the AntiGravity service.
-
-### ⚠️ Troubleshooting: macOS Xcode License Error
-If you run `make run-all` (or any Python script) on Mac and receive an error regarding Xcode:
-> *You have not agreed to the Xcode and Apple SDKs license.*
-
-Simply run this command in your terminal to accept Apple's license agreement:
-```bash
-sudo xcodebuild -license accept
-```
-*(Enter your Mac password blindly when prompted, then press Enter).*
+### ⚠️ Troubleshooting: "Could not reach backend" Error
+If you click on an Agent node and receive a `⚠️ Could not reach backend.` error, it means your `node server.js` process in Terminal 1 has crashed or was closed. 
+**Fix:** Ensure you have two separate terminal tabs open—one running the backend code, and one running the frontend code. Do not close the backend terminal to run frontend commands.
