@@ -82,7 +82,7 @@ const C: Record<string,any> = {
 const ALL_COLORS = Object.keys(C);
 
 // ─── Agent Config Modal ──────────────────────────────────────────────────────
-function AgentModal({ agent, edges, onClose, agentStream, agentLogs, activeAgents, completedAgents }: any) {
+function AgentModal({ agent, edges, onClose, onUpdateAgent, agentStream, agentLogs, activeAgents, completedAgents }: any) {
   const [tab, setTab]           = useState<'info'|'output'|'logs'>('info');
   const [configMode, setConfigMode] = useState<'model'|'prompt'|null>(null);
   const [selectedModel, setSelectedModel] = useState('');
@@ -91,6 +91,9 @@ function AgentModal({ agent, edges, onClose, agentStream, agentLogs, activeAgent
   const [saving, setSaving]     = useState(false);
   const [saveMsg, setSaveMsg]   = useState('');
   const outputRef = useRef<HTMLDivElement>(null);
+
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState({ label: agent.label, role: agent.role });
 
   const c = C[agent.color] || C.gray;
   const isActive = activeAgents.has(agent.key);
@@ -204,12 +207,40 @@ function AgentModal({ agent, edges, onClose, agentStream, agentLogs, activeAgent
             <div className="flex flex-col gap-6">
               <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100">
                 <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Agent Identity</h3>
-                <div className="flex items-start gap-4">
-                  <span className={`text-4xl w-16 h-16 flex items-center justify-center rounded-2xl shadow-sm ${c.ic} shrink-0`}>{agent.icon}</span>
-                  <div>
-                    <h4 className="font-bold text-gray-900 text-lg mb-1">{agent.label}</h4>
-                    <p className="text-sm text-gray-600 leading-relaxed">Assigned Role: <strong className="text-gray-900">{agent.role}</strong>.</p>
-                    <p className="text-sm text-gray-500 mt-2 leading-relaxed">{agent.desc || `This agent belongs to the ${agent.div.replace('_',' ')} division. It receives inputs from upstream agents and generates specialized strategic reports.`}</p>
+                <div className="flex justify-between items-start gap-4">
+                  <div className="flex items-start gap-4 flex-1">
+                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-3xl shadow-sm ${c.ic}`}>
+                      {agent.icon}
+                    </div>
+                    <div className="flex-1">
+                      {isEditingProfile ? (
+                        <div className="space-y-2 mb-3">
+                          <input type="text" value={profileForm.label} onChange={e=>setProfileForm(p=>({...p, label:e.target.value}))} className="w-full text-lg font-bold bg-white border border-gray-200 rounded-lg px-3 py-1 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Agent Name" />
+                          <input type="text" value={profileForm.role} onChange={e=>setProfileForm(p=>({...p, role:e.target.value}))} className="w-full text-sm font-bold bg-white border border-gray-200 rounded-lg px-3 py-1 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Agent Role" />
+                          <div className="flex gap-2 mt-2">
+                            <button onClick={()=>{
+                              onUpdateAgent(agent.key, profileForm);
+                              setIsEditingProfile(false);
+                            }} className="text-[10px] font-bold bg-blue-600 text-white px-3 py-1.5 rounded-md hover:bg-blue-700">Save Profile</button>
+                            <button onClick={()=>{
+                              setProfileForm({ label: agent.label, role: agent.role });
+                              setIsEditingProfile(false);
+                            }} className="text-[10px] font-bold bg-gray-100 text-gray-600 px-3 py-1.5 rounded-md hover:bg-gray-200">Cancel</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="group relative">
+                          <h4 className="font-bold text-gray-900 text-lg mb-0.5 flex items-center gap-2">
+                            {agent.label}
+                            <button onClick={()=>setIsEditingProfile(true)} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-500 transition-opacity">
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                            </button>
+                          </h4>
+                          <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest leading-relaxed">ID: <strong className="text-gray-900">{agent.key}</strong> • {agent.role}</p>
+                          <p className="text-sm text-gray-500 mt-2 leading-relaxed">{agent.desc || `This agent belongs to the ${agent.div.replace('_',' ')} division. It receives inputs from upstream agents and generates specialized strategic reports.`}</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -365,13 +396,30 @@ function AgentModal({ agent, edges, onClose, agentStream, agentLogs, activeAgent
 
 // ─── Instruction Editor Modal ────────────────────────────────────────────────────
 const INSTRUCTION_TEMPLATES = {
-  t1: { title: "Aggressive Pivot", content: "INSTRUCTION: The company is currently bleeding cash in the B2B SaaS space. We must immediately pivot to a B2C Fintech model. Burn rate must be cut by 50%. The CEO must outline a ruthless timeline for this transition. CPO needs to design a mobile-first consumer app. CMO needs to devise a viral marketing loop. CFO needs to model the exact runway required." },
-  t2: { title: "New Product Launch", content: "INSTRUCTION: We are launching a proprietary 'AI Doctor Assistant' into the US healthcare market. The objective is to acquire 1,000 independent clinics within 6 months. CPO must ensure HIPAA compliance in architecture. CMO must build a GTM strategy targeting clinical administrators. CFO must model a pricing tier that accelerates adoption while maintaining 70%+ gross margins." },
-  t3: { title: "Operational Overhaul", content: "INSTRUCTION: Revenue is stable but operational inefficiencies are destroying our profit margins. The instruction is to completely overhaul our supply chain and internal processes. COO must restructure the entire ops framework. CFO must identify the largest cost centers for trimming. CMO must manage public relations if we need to let people go. Zero impact on product quality is permitted." }
+  t1: { 
+    title: "Elite Biohacking Clinic", 
+    content: "INSTRUCTION: We are launching a $100M Hyper-Luxury Biohacking & Longevity Clinic in Geneva targeting UHNWI clients (net worth >$50M). The facility offers radical life extension, personalized genomics, and blood-washing therapies. The CEO must devise a master plan for acquisition of high-profile clientele without marketing. CPO must design the medical and lifestyle architecture. CFO must model a $500k/year membership tier. CMO must secure absolute privacy and exclusivity. COO must architect the operational logistics for transporting biological materials globally." 
+  },
+  t2: { 
+    title: "Generational Wealth Fund", 
+    content: "INSTRUCTION: We are creating a hyper-exclusive Generational Wealth & Dynasty Management Fund. Minimum buy-in is $1B. The goal is asset protection across multiple jurisdictions, geopolitical hedging, and aggressive tax arbitrage. CEO: Outline the 100-year dynasty plan. CFO: Model the legal tax evasion (arbitrage) structures and geopolitical risk parity portfolio. CLO: Review the Cayman/Swiss sanctuary laws. CMO: Design the discreet onboarding process for royal families and tech billionaires." 
+  },
+  t3: { 
+    title: "Billionaire Private Club", 
+    content: "INSTRUCTION: Developing a subterranean Private Club and Doomsday Bunker in New Zealand for the top 0.001%. It functions as an ultra-luxury resort during peacetime and an impenetrable fortress during societal collapse. CEO: Define the ultimate survival-luxury paradigm. CPO: Architect the sovereign infrastructure (power, water, hydroponics) blending with 5-star aesthetics. COO: Map out the 24/7 private security and aviation logistics. CMO: Sell the concept stealthily via whisper networks." 
+  },
+  t4: { 
+    title: "UHNWI Concierge Service", 
+    content: "INSTRUCTION: Launching a 'God-Mode' Concierge Service. We acquire anything, anytime, anywhere for the world's elite—from restricted art pieces to private island buyouts. CEO: Set the framework for unlimited operational capability. COO: Architect the 'Fixer' network spanning 50 countries with zero points of failure. CFO: Model infinite-spend credit underwriting. CMO: Position the brand as the invisible hand of the elite." 
+  },
+  t5: { 
+    title: "Space Tourism Syndicate", 
+    content: "INSTRUCTION: Forming a syndicate to monopolize ultra-luxury Low Earth Orbit (LEO) tourism and lunar land speculation. CEO: Mastermind the transition of luxury from Earth to Orbit. CPO: Design the zero-gravity ultra-luxury orbital habitats. CFO: Structure the massive capital expenditures and sovereign wealth funding. CLO: Navigate the unregulated void of space law and ownership. CMO: Target the ego of the world's wealthiest individuals to be the first orbital landowners." 
+  }
 };
 
 function InstructionModal({ activeInstruction, onClose, onSaved }: any) {
-  const [tab, setTab] = useState<'t1'|'t2'|'t3'|'custom'>(activeInstruction ? 'custom' : 't1');
+  const [tab, setTab] = useState<'t1'|'t2'|'t3'|'t4'|'t5'|'custom'>(activeInstruction ? 'custom' : 't1');
   const [content, setContent] = useState('');
   const [filename, setFilename] = useState(activeInstruction || 'draft_instruction.md');
   const [saving, setSaving] = useState(false);
@@ -508,7 +556,11 @@ export default function Home() {
   const [expandedDivs, setExpandedDivs] = useState<Record<string,boolean>>({ company: true, inner_circle: true, shield: true, market: true });
   const [removeCandidate, setRemoveCandidate] = useState<any>(null);
   const [addModalDiv, setAddModalDiv] = useState<string|null>(null);
-  const [newAgentForm, setNewAgentForm] = useState({ key:(Date.now()%1000).toString(), label:'', role:'', icon:'🤖', color:'gray' });
+  const [newAgentForm, setNewAgentForm] = useState({ key:'', label:'', role:'', icon:'🤖', color:'gray' });
+
+  const handleUpdateAgent = (key: string, updates: any) => {
+    setAgents(prev => prev.map(a => a.key === key ? { ...a, ...updates } : a));
+  };
 
   const handleHireEmployee = () => {
     if(!newAgentForm.key || !newAgentForm.label) return;
@@ -516,7 +568,7 @@ export default function Home() {
     setAgents(p => [...p, newAgent]);
     setPositions(p => ({...p, [newAgent.key]: {x: newAgent.x, y: newAgent.y}}));
     setAddModalDiv(null);
-    setNewAgentForm({ key:(Date.now()%1000).toString(), label:'', role:'', icon:'🤖', color:'gray' });
+    setNewAgentForm({ key:'', label:'', role:'', icon:'🤖', color:'gray' });
   };
 
   const handleFireEmployee = () => {
@@ -549,7 +601,7 @@ export default function Home() {
   const [dismissedTip, setDismissedTip] = useState<string|null>(null);
   
   const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(false);
-  const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
+  const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
   
   // Draggable nodes state
   const [positions, setPositions] = useState<Record<string, {x:number, y:number}>>(
@@ -676,6 +728,7 @@ export default function Home() {
       {modalDef && (
         <AgentModal agent={modalDef} onClose={()=>setModalAgent(null)}
           edges={edges}
+          onUpdateAgent={handleUpdateAgent}
           agentStream={agentStreams[modalDef.key] || ''}
           agentLogs={agentLogs}
           activeAgents={activeAgents}
@@ -831,23 +884,10 @@ export default function Home() {
          </div>
       </nav>
 
-      {/* ── Genie Floating Edge Toggles ── */}
-      <button 
-        onClick={() => setIsLeftPanelOpen(!isLeftPanelOpen)}
-        className={`fixed top-1/2 -translate-y-1/2 z-50 flex flex-col items-center justify-center bg-white border border-gray-200 shadow-[4px_0_24px_-8px_rgba(0,0,0,0.2)] transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]
-          ${isLeftPanelOpen ? 'left-72 rounded-r-2xl w-8 h-20 hover:w-10 hover:bg-gray-50' : 'left-0 rounded-r-2xl w-14 h-32 hover:w-16 hover:bg-gray-50'}`}
-      >
-        <span className="text-xl mb-1">{isLeftPanelOpen ? '‹' : '🏛️'}</span>
-        {!isLeftPanelOpen && <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest mt-1" style={{writingMode:'vertical-rl',textOrientation:'mixed'}}>ORG MAP</span>}
-      </button>
-
-      <button 
-        onClick={() => setIsRightPanelOpen(!isRightPanelOpen)}
-        className={`fixed top-1/2 -translate-y-1/2 z-50 flex flex-col items-center justify-center bg-white border border-gray-200 shadow-[-4px_0_24px_-8px_rgba(0,0,0,0.2)] transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]
-          ${isRightPanelOpen ? 'right-80 rounded-l-2xl w-8 h-20 hover:w-10 hover:bg-gray-50' : 'right-0 rounded-l-2xl w-14 h-32 hover:w-16 hover:bg-gray-50'}`}
-      >
-        <span className="text-xl mb-1">{isRightPanelOpen ? '›' : '📡'}</span>
-        {!isRightPanelOpen && <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest mt-1 rotate-180" style={{writingMode:'vertical-rl',textOrientation:'mixed'}}>LIVE LOGS</span>}
+      {/* ── Left Toggle Button (Slim) ── */}
+      <button onClick={()=>setIsLeftPanelOpen(!isLeftPanelOpen)} 
+        className={`fixed top-1/2 -translate-y-1/2 z-[45] flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] bg-white/60 hover:bg-white backdrop-blur-xl border border-gray-200 shadow-sm touch-none rounded-r-xl border-l-0 isolate overflow-hidden group ${isLeftPanelOpen ? 'left-72 w-5 h-20' : 'left-0 w-3 hover:w-5 h-24'}`}>
+        <div className={`w-0.5 h-8 bg-gray-400 rounded-full transition-all group-hover:bg-blue-400 ${isLeftPanelOpen ? 'bg-blue-300' : ''}`} />
       </button>
 
       {/* ── Left Sidebar (Company Hierarchy) ── */}
