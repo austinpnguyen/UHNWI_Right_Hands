@@ -1,12 +1,17 @@
 require('dotenv').config();
 const express = require('express');
 const http = require('http');
-const { Server } = require("socket.io");
+const { Server } = require('socket.io');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const Together = require('together-ai');
+const crypto = require('crypto');
+
+// ─── Brain DB ─────────────────────────────────────────────────────────────────
+const brain = require('./brain/db');
+const { RAGIngestor } = require('./brain/rag_ingestor');
 
 const app = express();
 app.use(cors());
@@ -71,29 +76,44 @@ function saveConfig(config) {
 
 const STATE_PATH = path.join(__dirname, 'system_state.json');
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function loadSystemState() {
+    if (!fs.existsSync(STATE_PATH)) return { activeCompanyId: null, companies: null };
+    let data = JSON.parse(fs.readFileSync(STATE_PATH, 'utf8'));
+    // Backwards compatibility: upgrade old flat agent format
+    if (data.agents && !data.companies) {
+        data = {
+            activeCompanyId: 'default',
+            companies: { 'default': { name: 'Alpha Startup', agents: data.agents, divisions: data.divisions } }
+        };
+        fs.writeFileSync(STATE_PATH, JSON.stringify(data, null, 2));
+    }
+    return data;
+}
+
+function getActiveCompanyId() {
+    const state = loadSystemState();
+    return state.activeCompanyId || null;
+}
+
+// Sync companies into brain DB on startup
+(function bootstrapDb() {
+    const state = loadSystemState();
+    // Always ensure 'default' exists so FK constraints never fail on fresh installs
+    brain.upsertCompany('default', 'Alpha Startup');
+    if (state.companies) brain.syncCompanies(state.companies);
+})();
+
 // ─── REST: System State ───────────────────────────────────────────────────────
 app.get('/system-state', (req, res) => {
-    if (!fs.existsSync(STATE_PATH)) {
-        res.json({ activeCompanyId: null, companies: null });
-    } else {
-        let data = JSON.parse(fs.readFileSync(STATE_PATH, 'utf8'));
-        // Backwards compatibility upgrade
-        if (data.agents && !data.companies) {
-            data = {
-                activeCompanyId: 'default',
-                companies: {
-                    'default': { name: 'Alpha Startup', agents: data.agents, divisions: data.divisions }
-                }
-            };
-            fs.writeFileSync(STATE_PATH, JSON.stringify(data, null, 2));
-        }
-        res.json(data);
-    }
+    res.json(loadSystemState());
 });
 
 app.put('/system-state', (req, res) => {
     const { activeCompanyId, companies } = req.body;
     fs.writeFileSync(STATE_PATH, JSON.stringify({ activeCompanyId, companies }, null, 2));
+    // Keep brain DB in sync whenever companies change
+    if (companies) brain.syncCompanies(companies);
     res.json({ ok: true });
 });
 
@@ -158,10 +178,111 @@ app.post('/save-instruction', (req, res) => {
     res.json({ filename: finalName });
 });
 
+// ─── Brain REST API ───────────────────────────────────────────────────────────
+
+// GET /brain/templates — list all workflow templates
+app.get('/brain/templates', (req, res) => {
+    res.json(brain.listTemplates());
+});
+
+// GET /brain/templates/:id — get a template with agents + phases
+app.get('/brain/templates/:id', (req, res) => {
+    const t = brain.getTemplate(req.params.id);
+    if (!t) return res.status(404).json({ error: 'Template not found' });
+    res.json(t);
+});
+
+// POST /brain/companies/:id/apply-template — clone template into company
+app.post('/brain/companies/:id/apply-template', (req, res) => {
+    const { templateId, defaultModel } = req.body;
+    if (!templateId) return res.status(400).json({ error: 'templateId is required' });
+    try {
+        brain.applyTemplateToCompany(req.params.id, templateId, defaultModel || null);
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+// GET /brain/companies/:id/agents — roster for a company
+app.get('/brain/companies/:id/agents', (req, res) => {
+    res.json(brain.getCompanyAgents(req.params.id));
+});
+
+// GET /brain/companies/:id/phases — workflow phases for a company
+app.get('/brain/companies/:id/phases', (req, res) => {
+    res.json(brain.getCompanyPhases(req.params.id));
+});
+
+// GET /brain/companies/:id/stats — quick dashboard stats
+app.get('/brain/companies/:id/stats', (req, res) => {
+    res.json(brain.getCompanyStats(req.params.id));
+});
+
+// GET /brain/companies/:id/runs — recent pipeline runs
+app.get('/brain/companies/:id/runs', (req, res) => {
+    const limit = parseInt(req.query.limit) || 10;
+    res.json(brain.getRecentRuns(req.params.id, limit));
+});
+
+// GET /brain/runs/:runId/logs — all events for a specific run
+app.get('/brain/runs/:runId/logs', (req, res) => {
+    res.json(brain.getRunLogs(req.params.runId));
+});
+
+// GET /brain/companies/:id/memory?agentKey=CEO — agent memories
+app.get('/brain/companies/:id/memory', (req, res) => {
+    const { agentKey, type, limit } = req.query;
+    if (!agentKey) return res.status(400).json({ error: 'agentKey is required' });
+    res.json(brain.getMemories({ companyId: req.params.id, agentKey, memoryType: type || null, limit: parseInt(limit) || 20 }));
+});
+
+// POST /brain/companies/:id/memory — store a memory
+app.post('/brain/companies/:id/memory', (req, res) => {
+    const { agentKey, memoryType, content, importance } = req.body;
+    if (!agentKey || !content) return res.status(400).json({ error: 'agentKey and content are required' });
+    const id = brain.addMemory({ companyId: req.params.id, agentKey, memoryType, content, importance });
+    res.json({ ok: true, id });
+});
+
+// GET /brain/companies/:id/comms — communications log
+app.get('/brain/companies/:id/comms', (req, res) => {
+    const { channel, status, limit } = req.query;
+    res.json(brain.getCommunications(req.params.id, { channel, status, limit: parseInt(limit) || 50 }));
+});
+
+// GET /brain/companies/:id/rag/search?q=keyword — keyword search RAG
+app.get('/brain/companies/:id/rag/search', (req, res) => {
+    const { q, limit } = req.query;
+    if (!q) return res.status(400).json({ error: 'q is required' });
+    res.json(brain.searchRag(req.params.id, q, parseInt(limit) || 5));
+});
+
+// GET /brain/companies/:id/sops — SOPs for a company
+app.get('/brain/companies/:id/sops', (req, res) => {
+    res.json(brain.getSOPs(req.params.id, req.query.agentKey || null));
+});
+
+// POST /brain/companies/:id/sops — add a SOP
+app.post('/brain/companies/:id/sops', (req, res) => {
+    const { agentKey, title, content } = req.body;
+    if (!title || !content) return res.status(400).json({ error: 'title and content are required' });
+    const id = brain.addSOP({ companyId: req.params.id, agentKey: agentKey || null, title, content });
+    res.json({ ok: true, id });
+});
+
 // ─── WebSocket ────────────────────────────────────────────────────────────────
 const server = http.createServer(app);
-const io     = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } });
+const io     = new Server(server, { cors: { origin: '*', methods: ['GET', 'POST'] } });
 const together = new Together({ apiKey: process.env.TOGETHER_API_KEY });
+
+// ─── RAG Ingestor (watches 00_FOUNDER_INSTRUCTION for new files) ──────────────
+const ragIngestor = new RAGIngestor({
+    together,
+    getCompanyId: getActiveCompanyId,
+    watchDir: INPUT_DIR,
+});
+ragIngestor.start();
 
 // Strip YAML frontmatter so the LLM never sees tool grants like `tools: Read, Glob`
 function stripFrontmatter(text) {
@@ -290,12 +411,36 @@ io.on('connection', (socket) => {
     socket.on('trigger_pipeline', async (data) => {
         if (!data.instruction) return;
         socket.cancelled = false;
-        
+
+        const runId = brain.generateRunId();
+        const companyId = data.companyId || getActiveCompanyId() || 'default';
+
         const activeKeys = data.activeAgentKeys || [];
         const agentsMap = data.agents ? Object.fromEntries(data.agents.map(a => [a.key, a])) : {};
+
+        // Ensure company exists in brain DB before writing any logs (handles fresh DB)
+        const stateForCompany = loadSystemState();
+        const companyName = stateForCompany.companies?.[companyId]?.name || companyId;
+        brain.upsertCompany(companyId, companyName);
+
+        brain.logEvent({ companyId, runId, eventType: 'start', payload: { instruction: data.instruction } });
+        socket.emit('run_id', { runId });
         
-        const instructionContent = fs.readFileSync(path.join(INPUT_DIR, data.instruction), 'utf8');
-        const outDir = path.join(__dirname, '../company_files/thoughts', data.instruction.replace(/\.(md|txt)$/, ''));
+        let instructionContent = data.instruction;
+        try {
+            const potentialPath = path.join(INPUT_DIR, data.instruction);
+            if (fs.existsSync(potentialPath) && fs.statSync(potentialPath).isFile()) {
+                instructionContent = fs.readFileSync(potentialPath, 'utf8');
+            }
+        } catch (e) {
+            // Ignore path errors and use literal text
+        }
+        
+        let safeDirName = data.instruction.replace(/\.(md|txt)$/, '');
+        if (safeDirName.length > 40 || safeDirName.includes('/') || safeDirName.includes('\\')) {
+            safeDirName = `run_${runId}`;
+        }
+        const outDir = path.join(__dirname, '../company_files/thoughts', safeDirName);
         const now = new Date();
         const yyyy = now.getFullYear();
         const mm = String(now.getMonth() + 1).padStart(2, '0');
@@ -305,29 +450,46 @@ io.on('connection', (socket) => {
 
         socket.emit('pipeline_phase', { phase: 1, total: 3, label: 'Phase 1 — CEO: Master Plan' });
 
-        const safeRun = async (agentKey, userMessage, fallbackSystem = null) => {
+        const safeRun = async (agentKey, userMessage, fallbackSystem = null, phase = null) => {
             if (!activeKeys.includes(agentKey)) {
                 socket.emit('agent_log', { agent: 'System', msg: `[SKIPPED] ${agentKey} is terminated/inactive.` });
                 socket.emit('agent_active', { agent: agentKey, active: false });
                 socket.emit('agent_stream', { agent: agentKey, chunk: `*This department has been terminated or is currently inactive. No intelligence provided.*` });
+                brain.logEvent({ companyId, runId, agentKey, phase, eventType: 'skipped' });
                 return `[TERMINATED BY FOUNDER]`;
             }
             const agentNode = agentsMap[agentKey] || {};
-            return await runAgent({ socket, agentKey, userMessage, outputPath: path.join(outDir, `${agentKey}_${hrTag}.md`), fallbackSystem, isHuman: !!agentNode.isHuman });
+            brain.logEvent({ companyId, runId, agentKey, phase, eventType: 'start' });
+            try {
+                const result = await runAgent({ socket, agentKey, userMessage, outputPath: path.join(outDir, `${agentKey}_${hrTag}.md`), fallbackSystem, isHuman: !!agentNode.isHuman });
+                brain.logEvent({ companyId, runId, agentKey, phase, eventType: 'complete', payload: { outputLength: result?.length ?? 0 } });
+                return result;
+            } catch (err) {
+                if (err.message !== 'STOPPED') {
+                    brain.logEvent({ companyId, runId, agentKey, phase, eventType: 'error', payload: { error: err.message } });
+                }
+                throw err;
+            }
         };
 
         try {
-            const ceoPlan = await safeRun('CEO', `EXECUTE YOUR ROLE. Synthesize a Master Plan V1 from the Founder's Instruction below.\n\nINSTRUCTION:\n${instructionContent}`);
+            const ceoPrompt = `EXECUTE YOUR ROLE. Synthesize a Master Plan V1 from the Founder's Instruction below.
+
+CRITICAL DIRECTIVE: If the Founder has explicitly mentioned any roles using an '@' symbol (e.g. @CPO, @CMO, @TARGET_BUYER), you MUST explicitly delegate those specific tasks and context to those exact roles in your Master Plan, maintaining the proper chain of command.
+
+INSTRUCTION:
+${instructionContent}`;
+            const ceoPlan = await safeRun('CEO', ceoPrompt, null, 1);
 
             socket.emit('agent_log',    { agent: 'System', msg: 'CEO complete. Dispatching C-Suite (Phase 2) in parallel...' });
             socket.emit('pipeline_phase', { phase: 2, total: 3, label: 'Phase 2 — C-Suite: Strategy Formulation' });
 
             const sharedCtx = `INSTRUCTION:\n${instructionContent}\n\nCEO MASTER PLAN:\n${ceoPlan}`;
             const [cpoArch, cfoFin, cmoGtm, cooOps] = await Promise.all([
-                safeRun('CPO', `EXECUTE YOUR ROLE. Design the full product architecture.\n\n${sharedCtx}`),
-                safeRun('CFO', `EXECUTE YOUR ROLE. Produce a brutal financial constraint model.\n\n${sharedCtx}`),
-                safeRun('CMO', `EXECUTE YOUR ROLE. Design the complete go-to-market and brand strategy.\n\n${sharedCtx}`),
-                safeRun('COO', `EXECUTE YOUR ROLE. Map out the full operational execution framework.\n\n${sharedCtx}`),
+                safeRun('CPO', `EXECUTE YOUR ROLE. Design the full product architecture.\n\n${sharedCtx}`, null, 2),
+                safeRun('CFO', `EXECUTE YOUR ROLE. Produce a brutal financial constraint model.\n\n${sharedCtx}`, null, 2),
+                safeRun('CMO', `EXECUTE YOUR ROLE. Design the complete go-to-market and brand strategy.\n\n${sharedCtx}`, null, 2),
+                safeRun('COO', `EXECUTE YOUR ROLE. Map out the full operational execution framework.\n\n${sharedCtx}`, null, 2),
             ]);
 
             socket.emit('agent_log',    { agent: 'System', msg: 'C-Suite complete. Dispatching specialized divisions (Phase 3)...' });
@@ -415,15 +577,18 @@ ${finalReportCtx}`,
                 outputPath: path.join(outDir, finalReportFileName)
             });
 
+            brain.logEvent({ companyId, runId, eventType: 'complete', payload: { reportCount: 17, finalReport: finalReportFileName } });
             socket.emit('agent_log',        { agent: 'System', msg: 'Pipeline [FULL DYNASTY] complete. 17 reports filed.' });
-            socket.emit('pipeline_complete', { phase: 'csuite', reportCount: 17, finalReport: finalReportFileName, finalReportContent: ceoFinal });
+            socket.emit('pipeline_complete', { phase: 'csuite', reportCount: 17, finalReport: finalReportFileName, finalReportContent: ceoFinal, runId });
         } catch (err) {
             if (err.message === 'STOPPED') {
-                socket.emit('pipeline_complete', { phase: 'stopped', reportCount: 0 });
+                brain.logEvent({ companyId, runId, eventType: 'stopped' });
+                socket.emit('pipeline_complete', { phase: 'stopped', reportCount: 0, runId });
             } else {
+                brain.logEvent({ companyId, runId, eventType: 'error', payload: { error: err.message } });
                 console.error('[NODE] Pipeline error:', err);
                 socket.emit('agent_log',        { agent: 'FATAL ERROR', msg: err.message });
-                socket.emit('pipeline_complete', { phase: 'error', reportCount: 0 });
+                socket.emit('pipeline_complete', { phase: 'error', reportCount: 0, runId });
             }
         }
     });

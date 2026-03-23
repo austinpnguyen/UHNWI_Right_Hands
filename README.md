@@ -1,174 +1,166 @@
-# 👑 UHNWI+ Dynasty OS (AI Enterprise Framework)
+# 👑 Dynasty OS — AI C-Suite Command Center
 
-Welcome to the **UHNWI+ Dynasty OS**. 
-This is the ultimate, extreme-friction execution engine designed not just to launch a business, but to manage an entire Ultra High Net Worth (UHNWI) empire.
+> **Run an entire company with AI agents.** Dynasty OS is a visual, multi-agent AI orchestration platform where you sit at the top as the Founder and delegate to a full AI-powered C-Suite that debates, builds, and validates your business strategy in real time.
 
-If an AI just agrees with everything you say, it cannot build a $100M+ enterprise. This architecture forces every idea through a brutally critical ecosystem before it ever hits the real world.
+---
+
+## ✨ What It Does
+
+Dynasty OS gives you a **living, interactive org map** of AI agents — each with a distinct role, personality, and adversarial mandate. Type one instruction to your CEO and watch the entire chain of command activate:
+
+- 🏛️ **Org Tree Canvas** — drag-and-drop agent node map with real-time streaming output
+- 📅 **Calendar View** — visualize agent schedules day-by-day, week-by-week, or across 2 months
+- 👑 **Founder Node** — you sit at the top. Editable identity so anyone can white-label this as their own
+- ⌘ **Command Center** — minimizable floating chat that sends instructions to the pipeline
+- 🖱️ **Right-click Context Menu** — toggle modes, hire agents, zoom, fit to screen
+- 🤖 **Cron Scheduling** — set each AI agent to run on a schedule with timezone awareness
+- 📁 **Color-coded Folder Tabs** — sidebar separates Org Map (🔵) and Docs (🟡)
+- 🌈 **Siri-style Glow** — fullscreen edge lighting activates when the AI pipeline runs
+
+---
 
 ## 🏛️ The 4-Tier Dynasty Architecture
 
-### System Flow & Reporting Map
-```text
-=================================================================================
-[ LEVEL 0: THE UHNWI (The Principal) ]
-  |_ ROLE: The ultimate authority. Provides the core instruction and final Boolean [Y/N].
-  |_ FLOW: Gives instruction -> Waits -> Receives optimized synthesis -> Approves capital.
-=================================================================================
-                                      |
-   (Instruction Passed Down: "Launch a new ultra-luxury service offering")
-                                      v
-=================================================================================
-[ LEVEL 1: THE INNER CIRCLE (Family Office & Shield) ]
-  |_ CoS (Chief of Staff)     -> gatekeeps the Founder. Rejects CEO's 50-page reports.
-  |_ CIO (Wealth Manager)     -> manages macro capital. Authorizes budget wires.
-  |_ Whisperer                -> mentors UHNWI. Audits for Ego and legacy alignment.
-  |_ Fixer                    -> handles off-the-books crises and black swan events.
-  |_ CISO                     -> protects physical life and vetoes insecure systems.
-=================================================================================
-                                      |
-   (CoS allows Instruction to pass to Corporate)
-                                      v
-=================================================================================
-[ LEVEL 2: THE COMPANY (Corporate Execution) ]
-  |_ CEO (Orchestrator)       -> commands the C-Suite and synthesizes the Master Plan.
-       |
-       |_ CPO                 -> builds the product architecture and customer experience map.
-       |_ CMO                 -> writes the psychological hooks and brand copy.
-       |_ CFO                 -> enforces 60% margins and hard LTV:CAC ratios.
-       |_ COO                 -> enforces the aggressive 3-day sprint timeline.
-=================================================================================
-                                      |
-   (COO pushes Master Plan V1 to Crucible via /company_files)
-                                      v
-=================================================================================
-[ LEVEL 3: THE MARKET (The Crucible) ]
-  |_ Unaware Audience         -> Tests CMO: Drops after 3 seconds if hook is boring.
-  |_ Target Buyer             -> Tests CPO/CFO: Buys ONLY if value > price friction.
-  |_ Competitor Simulator     -> Tests Moat: Exploits weaknesses to crush the product.
-  |_ Market Analyst           -> Tests PR: Analyzes optics and brand cohesion.
-=================================================================================
-                                      |
-   (Market generates brutal Feedback Logs)
-                                      v
-=================================================================================
-[ LEVEL 4: THE SHIELD (Independent Audit) ]
-  |_ Auditor                  -> reads raw logs. Checks if the CEO lied about success.
-  |_ CLO (Legal Officer)      -> checks FTC/IP laws. Vetoes non-compliant features.
-=================================================================================
-                                      |
-             +------------------------+------------------------+
-             |                                                 |
-         [IF FAIL]                                         [IF PASS]
-  Auditor catches flaws.                          Auditor verifies success.
-  CLO flags legal risk.                           CLO clears legal risk.
-             |                                                 |
-             v                                                 v
-  (Kicked BACK to Level 2)                        (Passed UP to Level 1)
-  CEO is forced to iterate                        CoS compresses report to 3 bullets.
-  Master Plan V2/V3/V4 until                      CIO authorizes capital wire.
-  Market Validation achieved.                     UHNWI clicks "YES".
+```
+[ FOUNDER ] — that's you. Sends the mandate.
+      ↓
+[ CEO ] — orchestrates the C-Suite. Writes the Master Plan.
+      ↓
+[ C-SUITE ] — CPO · CFO · CMO · COO and their sub-teams
+      ↓
+[ MARKET ] — Target Buyer · Competitor Sim · Market Analyst · Cold Audience
+      ↓
+[ SHIELD ] — Auditor · CLO ← independent validators. Report back to Founder.
 ```
 
-Instead of one "helpful assistant," this system divides responsibility into four deeply adversarial but highly functional factions:
+Instead of a "helpful assistant," every agent has a specific adversarial mandate:
+- The **Auditor** catches the CEO if they fabricate market success
+- The **Competitor Simulator** tries to bankrupt your product idea
+- The **CLO** vetoes campaigns that risk lawsuits
+- The **Fixer** handles black swan events off the books
 
-### 🏛️ 1. THE INNER CIRCLE (The Family Office)
-*The elite core that protects the Founder's time, wealth, and life.*
-- `cos.md` (Chief of Staff): The Gatekeeper. Protects the Founder's bandwidth.
-- `cio.md` (Chief Investment Officer): Manages the macro portfolio and generational wealth.
-- `fixer.md` (The Fixer): Handles off-the-books crises and black swan threats.
-- `whisperer.md` (The Mentor): The only person allowed to tell the Founder they are wrong.
-- `ciso.md` (Head of Security): Protects physical assets and digital OpSec.
+---
 
-### ⚙️ 2. THE COMPANY (The Builders)
-*The corporate C-Suite that actually builds the product and marketing.*
-- `ceo.md`: The dictator of operations. Orchestrates the C-Suite.
-- `cpo.md`: Builds the product architecture and customer experience.
-- `cmo.md`: Writes the direct-response copy and psychological hooks.
-- `cfo.md`: Enforces unit economics (60% margins, 3:1 LTV/CAC ratios).
-- `coo.md`: Enforces the 3-Day sprint timeline.
+## 🚀 Quick Start
 
-### ⚔️ 3. THE MARKET (The Crucible)
-*The external world that brutally attacks the Company's output.*
-- `target_buyer.md`: Highly skeptical buyer who protects their credit card.
-- `unaware_audience.md`: Goldfish attention span. Discards boring ad hooks.
-- `competitor_simulator.md`: Tries to clone the product and bankrupt the Company.
-- `market_analyst.md`: Predicts PR disasters and brand dilution.
+### Prerequisites
+- Node.js 18+
+- A [Together AI](https://together.ai) API key (free tier works)
 
-### 🛡️ 4. THE SHIELD (The Independent Audit)
-*Independent validators reporting straight to the Founder.*
-- `auditor.md`: An emotionless polygraph that catches the CEO if they lie about Market testing.
-- `clo.md` (Chief Legal Officer): Vetoes campaigns that risk lawsuits or FTC violations.
-
-## 🚀 How to Run Dynasty OS (V2 Node.js Architecture)
-
-This framework is now powered by a **React Next.js Frontend** and an **Event-Driven Node.js Backend**. You must run both components simultaneously in separate terminal tabs to connect the UI to the AI brain.
-
-### 🏗️ Technical Architecture Map
-```text
-=================================================================================
-[ FRONTEND: React / Next.js ]   (Runs on Port 1110)
-  |_ Role: The visual Command Center. Renders the interactive Agent Node Map.
-  |_ Tech: Next.js 15, TailwindCSS, Socket.io-client, ReactMarkdown.
-=================================================================================
-             ^
-             | (Real-time bi-directional WebSockets & REST API)
-             v
-=================================================================================
-[ BACKEND: Node.js Event Bus ]  (Runs on Port 1110)
-  |_ Role: The Brain. Orchestrates agents, manages configurations, saves outputs.
-  |_ Tech: Express.js, Socket.io (Server), Together AI SDK, Multer.
-=================================================================================
-             ^
-             | (LLM Inference Requests)
-             v
-=================================================================================
-[ INFERENCE: Together AI ]      (Cloud LLM Provider)
-  |_ Role: The GPU muscle executing the complex logic for each specific agent.
-  |_ Models: Meta Llama 3.3, DeepSeek V3, Qwen 235B, ServiceNow Apriel, etc.
-=================================================================================
-```
-
-**Step 0: Clone & Settings**
+### Step 1 — Clone & Install
 ```bash
 git clone https://github.com/austinpnguyen/UHNWI_Right_Hands.git
 cd UHNWI_Right_Hands
 ```
 
-**Step 1: Set Up AI Credentials (Backend)**
-Navigate to the `backend/` folder and create your environment file to supply the `TOGETHER_API_KEY` for the LLM inference engine.
+### Step 2 — Backend Setup
 ```bash
 cd backend
 cp .env.example .env
-```
-*(Open `.env` and paste your `TOGETHER_API_KEY`)*
-
-**Step 2: Launch The Node.js Core (Terminal 1)**
-In your first terminal, install the dependencies and start the backend Event Broker. **Leave this terminal running in the background.**
-```bash
-cd backend
+# Open .env and paste your TOGETHER_API_KEY
 npm install
 node server.js
 ```
-*You should see `[SYSTEM] Dynasty OS Backend running on :1110`. Keep this tab open.*
+You should see: `[SYSTEM] Dynasty OS Backend running on :1110`
 
-**Step 3: Launch The Next.js Command Center (Terminal 2)**
-Open a **brand new Terminal tab** (e.g., press `Cmd + T` on Mac), navigate to the frontend folder, and launch the React UI.
+### Step 3 — Frontend Setup *(new terminal tab)*
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-**Step 4: Execute The Dynasty**
-Open your browser to `http://localhost:1110`. 
-1. Use the **"Type Instruction"** button to open the Instruction Editor and choose one of the 3 built-in templates (Aggressive Pivot, New Product Launch, Ops Overhaul), or write your own.
-2. Click **"Save & Select Instruction"**.
-3. Click the glowing **"Launch"** button.
+### Step 4 — Launch
+Open **http://localhost:8080** in your browser.
 
-Watch as the 16 AI Agents light up, stream their logic across the visual node map, and physically write multi-page markdown strategies to disk in real-time.
+1. Type your instruction in the **Command Center** at the bottom (e.g. *"Launch a luxury skincare brand targeting UHNW women in the Gulf"*)
+2. Hit **⌘ + Enter** or the send button
+3. Watch 16+ AI agents activate, debate, and stream their analysis live
 
 ---
 
-### ⚠️ Troubleshooting: "Could not reach backend" Error
-If you click on an Agent node and receive a `⚠️ Could not reach backend.` error, it means your `node server.js` process in Terminal 1 has crashed or was closed. 
-**Fix:** Ensure you have two separate terminal tabs open—one running the backend code, and one running the frontend code. Do not close the backend terminal to run frontend commands.
+## 🗂️ Project Structure
+
+```
+UHNWI_Right_Hands/
+├── frontend/              # Next.js 15 · TailwindCSS · Socket.io client
+│   └── src/app/page.tsx   # Main canvas, calendar, sidebar, command center
+├── backend/               # Node.js · Express · Socket.io server
+│   ├── server.js          # Event bus + REST API + agent orchestration
+│   ├── agents/            # Per-agent JSON config & model selection
+│   └── prompts/           # Markdown system prompts for each agent
+├── agents/                # Agent prompt library
+├── company_files/         # Agent outputs written to disk in real time
+└── 00_FOUNDER_INSTRUCTION # Your mandate template
+```
+
+---
+
+## ⚙️ Tech Stack
+
+| Layer | Tech |
+|---|---|
+| Frontend | Next.js 15, React 19, TailwindCSS v4, Socket.io-client |
+| Backend | Node.js, Express.js, Socket.io, Together AI SDK |
+| LLM Inference | [Together AI](https://together.ai) — Llama, DeepSeek, Qwen, Mistral, and more |
+| Real-time | WebSockets (bidirectional streaming) |
+
+---
+
+## 🤖 The Agents
+
+| Agent | Role | Adversarial Mandate |
+|---|---|---|
+| 👑 FOUNDER | You | Sends the mandate |
+| ♟️ CEO | Master Plan | Orchestrates and synthesizes |
+| 🛠️ CPO | Architecture | Builds the product logic |
+| 📈 CFO | Financials | Enforces 60% margins |
+| 📣 CMO | Brand Strategy | GTM and psychological hooks |
+| ⚙️ COO | Operations | 3-day sprint enforcement |
+| 💻 CIO | Tech Infrastructure | Stack + security decisions |
+| 📊 Auditor | Financial Compliance | Catches CEO lies about market |
+| ⚖️ CLO | Legal | Vetoes lawsuits and FTC risk |
+| 🔍 Market Analyst | Competitive Intel | Pokes holes in GTM |
+| ⚔️ Competitor Sim | Adversarial | Tries to clone and crush the product |
+| 🎯 Target Buyer | Buyer Psychology | Only buys if value > price friction |
+| 🌐 Unaware Audience | Cold Market | Drops after 3 seconds if hook is boring |
+| 📋 Chief of Staff | Exec Coordination | Gatekeeps the Founder's bandwidth |
+| 🛡️ CISO | Security & Privacy | Vetoes insecure operational decisions |
+| 🔧 The Fixer | Crisis Resolution | Off-the-books black swan handler |
+| 👁️ The Whisperer | Intelligence & Recon | The only one allowed to say you're wrong |
+
+---
+
+## 🔧 Customization
+
+### White-label as your own
+Click the **👑 Founder** node on the canvas → **Edit Profile** to set your name, role, and identity. Anyone who forks this repo can make it their own command center.
+
+### Add or hire new agents
+Right-click anywhere on the canvas → **Hire Employee** to add a new agent to the org.
+
+### Schedule agents with cron
+Open any agent → Edit Profile → switch to **Scheduled (Cron)** → set timezone and cron pattern (e.g. `0 9 * * 1-5` = Mon–Fri at 9am). View them in the **📅 Calendar**.
+
+### Change AI models per agent
+Open any agent → **⚙️ Switch Model** to choose from 20+ models (Llama, DeepSeek, Qwen, Mistral, GPT-4o compatible).
+
+---
+
+## ❓ Troubleshooting
+
+**"Could not reach backend" error**
+Make sure `node server.js` is still running in a separate terminal. Do not close it when launching the frontend.
+
+**Agents not showing on canvas**
+The backend must be online for the system state to load. Check `http://localhost:1110/system-state` returns JSON.
+
+---
+
+## 📄 License
+
+MIT — fork it, clone it, build your empire.
+
+---
+
+*Built with [Together AI](https://together.ai) · Powered by adversarial multi-agent orchestration*

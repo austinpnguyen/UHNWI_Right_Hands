@@ -28,6 +28,9 @@ const TOGETHER_MODELS = [
 
 // ─── All 16 agents ──────────────────────────────────────────────────────────
 export const INITIAL_AGENTS = [
+  // FOUNDER (you)
+  { key:'FOUNDER', label:'Founder', role:'Visionary & Commander', icon:'👑', color:'gold', div:'company', x:825, y:-120, isFounder:true, desc: "The visionary behind the organization. All orders flow from here down to the CEO and the entire chain of command." },
+
   { key:'CEO',         label:'CEO',              role:'Master Plan',          icon:'♟️', color:'blue',    div:'company',      x:825,  y:40,   desc: "Reads instructions, formulates the Master Plan, delegates to C-Suite, and finally condenses all outputs into the Final Executive Report." },
   
   // C-SUITE ROW
@@ -57,6 +60,7 @@ export const INITIAL_AGENTS = [
 ];
 
 export const INITIAL_EDGES = [
+  { from:'FOUNDER', to:'CEO' },
   { from:'CEO',to:'CPO'},{ from:'CEO',to:'CFO'},{ from:'CEO',to:'CMO'},{ from:'CEO',to:'COO'},
   { from:'CPO',to:'CIO'},{ from:'CFO',to:'AUDITOR'},{ from:'CFO',to:'CLO'},
   { from:'CMO',to:'MKT_ANALYST'},{ from:'CMO',to:'COMPETITOR'},{ from:'CMO',to:'TARGET_BUYER'},{ from:'CMO',to:'UNAWARE'},
@@ -76,7 +80,8 @@ const C: Record<string,any> = {
   slate:   { ring:'ring-slate-400',   glow:'shadow-[0_0_20px_rgba(148,163,184,0.5)]',   dot:'bg-slate-500',   badge:'bg-slate-100 text-slate-700',    h:'from-slate-50',   ic:'bg-slate-100 text-slate-600',   edge:'#94A3B8' },
   amber:   { ring:'ring-amber-400',   glow:'shadow-[0_0_20px_rgba(251,191,36,0.5)]',    dot:'bg-amber-500',   badge:'bg-amber-100 text-amber-700',    h:'from-amber-50',   ic:'bg-amber-100 text-amber-600',   edge:'#FBBF24' },
   red:     { ring:'ring-red-400',     glow:'shadow-[0_0_20px_rgba(248,113,113,0.5)]',   dot:'bg-red-500',     badge:'bg-red-100 text-red-700',       h:'from-red-50',     ic:'bg-red-100 text-red-600',      edge:'#F87171' },
-  gray:    { ring:'ring-gray-400',    glow:'shadow-[0_0_20px_rgba(156,163,175,0.5)]',   dot:'bg-gray-500',    badge:'bg-gray-100 text-gray-700',     h:'from-gray-50',    ic:'bg-gray-100 text-gray-600',    edge:'#9CA3AF' },
+  gray:    { ring:'ring-gray-400',    glow:'shadow-[0_0_20px_rgba(156,163,175,0.5)]',   dot:'bg-gray-500',   badge:'bg-gray-100 text-gray-700',     h:'from-gray-50',    ic:'bg-gray-100 text-gray-600',    edge:'#9CA3AF' },
+  gold:    { ring:'ring-yellow-400',  glow:'shadow-[0_0_28px_rgba(234,179,8,0.65)]',    dot:'bg-yellow-500', badge:'bg-yellow-100 text-yellow-800', h:'from-yellow-50',  ic:'bg-yellow-100 text-yellow-700', edge:'#EAB308' },
 };
 
 const ALL_COLORS = Object.keys(C);
@@ -94,7 +99,12 @@ function AgentModal({ agent, edges, onClose, onUpdateAgent, agentStream, agentLo
   const outputRef = useRef<HTMLDivElement>(null);
 
   const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [profileForm, setProfileForm] = useState({ key: agent.key, label: agent.label, role: agent.role, email: agent.email || '', phone: agent.phone || '' });
+  const [profileForm, setProfileForm] = useState({ 
+    key: agent.key, label: agent.label, role: agent.role, email: agent.email || '', phone: agent.phone || '', isHuman: agent.isHuman || false,
+    triggerType: agent.triggerType || 'event',
+    timezone: agent.timezone || 'America/Los_Angeles',
+    operatingHours: agent.operatingHours || '24/7'
+  });
 
   const c = C[agent.color] || C.gray;
   const isActive = activeAgents.has(agent.key);
@@ -215,39 +225,114 @@ function AgentModal({ agent, edges, onClose, onUpdateAgent, agentStream, agentLo
                     </div>
                     <div className="flex-1">
                       {isEditingProfile ? (
-                        <div className="space-y-2 mb-3">
-                          <input type="text" value={profileForm.label} onChange={e=>setProfileForm(p=>({...p, label:e.target.value}))} className="w-full text-lg font-bold bg-white/50 backdrop-blur-md border border-gray-200 rounded-lg px-3 py-1.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-sans" placeholder="Agent Name" />
-                          <input type="text" value={profileForm.key} onChange={e=>setProfileForm(p=>({...p, key:e.target.value}))} className="w-full text-xs font-mono font-bold bg-white/50 backdrop-blur-md border border-gray-200 rounded-lg px-3 py-1.5 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="System ID (e.g. BADGE-1234)" />
-                          <input type="text" value={profileForm.role} onChange={e=>setProfileForm(p=>({...p, role:e.target.value}))} className="w-full text-sm font-bold bg-white/50 backdrop-blur-md border border-gray-200 rounded-lg px-3 py-1.5 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="Agent Role" />
-                          <input type="email" value={profileForm.email} onChange={e=>setProfileForm(p=>({...p, email:e.target.value}))} className="w-full text-sm font-medium bg-white/50 backdrop-blur-md border border-gray-200 rounded-lg px-3 py-1.5 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="Email Address" />
-                          <input type="text" value={profileForm.phone} onChange={e=>setProfileForm(p=>({...p, phone:e.target.value}))} className="w-full text-sm font-medium bg-white/50 backdrop-blur-md border border-gray-200 rounded-lg px-3 py-1.5 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="Phone Number" />
-                          <div className="flex gap-2 mt-2 pt-1">
+                        <div className="space-y-4 mb-3">
+                          <div>
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1 mb-1 block">Agent Name</label>
+                            <input type="text" value={profileForm.label} onChange={e=>setProfileForm(p=>({...p, label:e.target.value}))} className="w-full text-sm font-bold bg-white border border-gray-200 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-sans" placeholder="Agent Name" />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1 mb-1 block">System ID</label>
+                            <input type="text" value={profileForm.key} onChange={e=>setProfileForm(p=>({...p, key:e.target.value}))} className="w-full text-xs font-mono font-bold bg-white border border-gray-200 rounded-lg px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="System ID (e.g. BADGE-1234)" />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1 mb-1 block">Primary Role</label>
+                            <input type="text" value={profileForm.role} onChange={e=>setProfileForm(p=>({...p, role:e.target.value}))} className="w-full text-sm font-bold bg-white border border-gray-200 rounded-lg px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="Agent Role" />
+                          </div>
+                          <div className="flex gap-4">
+                            <div className="flex-1">
+                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1 mb-1 block">Email (Optional)</label>
+                              <input type="email" value={profileForm.email||''} onChange={e=>setProfileForm(p=>({...p, email:e.target.value}))} className="w-full text-sm font-medium bg-white border border-gray-200 rounded-lg px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="Email Address" />
+                            </div>
+                            <div className="flex-1">
+                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1 mb-1 block">Phone (Optional)</label>
+                              <input type="text" value={profileForm.phone||''} onChange={e=>setProfileForm(p=>({...p, phone:e.target.value}))} className="w-full text-sm font-medium bg-white border border-gray-200 rounded-lg px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="Phone Number" />
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 pt-2">
+                            <label className="text-[11px] font-bold text-gray-700 flex items-center gap-2 cursor-pointer select-none">
+                              <input type="checkbox" checked={profileForm.isHuman||false} onChange={e=>setProfileForm(p=>({...p, isHuman:e.target.checked}))} className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
+                              This is a Human Executive
+                            </label>
+                          </div>
+                          
+                          {/* CRON / TRIGGER FIELDS */}
+                          {!profileForm.isHuman && (
+                            <div className="space-y-3 pt-3 mt-1 border-t border-gray-200/60 bg-gray-50/50 -mx-3 px-3 pb-2 rounded-xl">
+                              <h5 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1.5"><span className="text-blue-500 text-sm">⚡</span> Execution Strategy</h5>
+                              <div className="flex gap-4">
+                                <label className="text-[11px] font-bold text-gray-700 flex items-center gap-2 cursor-pointer transition-colors hover:text-blue-600">
+                                   <input type="radio" checked={profileForm.triggerType !== 'cron'} onChange={()=>setProfileForm(p=>({...p, triggerType:'event'}))} className="form-radio text-blue-600 focus:ring-blue-500" />
+                                   Event-Driven (Pipeline)
+                                </label>
+                                <label className="text-[11px] font-bold text-gray-700 flex items-center gap-2 cursor-pointer transition-colors hover:text-amber-600">
+                                   <input type="radio" checked={profileForm.triggerType === 'cron'} onChange={()=>setProfileForm(p=>({...p, triggerType:'cron'}))} className="form-radio text-amber-500 focus:ring-amber-500" />
+                                   Scheduled (Cron)
+                                </label>
+                              </div>
+                              {profileForm.triggerType === 'cron' && (
+                                <div className="grid grid-cols-2 gap-3 mt-2 animate-in slide-in-from-top-2 fade-in duration-200">
+                                  <div>
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1 mb-1 block">Timezone</label>
+                                    <select value={profileForm.timezone} onChange={e=>setProfileForm(p=>({...p, timezone:e.target.value}))} className="w-full text-xs font-bold bg-white border border-gray-200 rounded-lg px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all">
+                                       <option value="UTC">UTC (Universal)</option>
+                                       <option value="America/New_York">Eastern Time (ET)</option>
+                                       <option value="America/Chicago">Central Time (CT)</option>
+                                       <option value="America/Los_Angeles">Pacific Time (PT)</option>
+                                       <option value="Europe/London">London (GMT)</option>
+                                       <option value="Asia/Tokyo">Tokyo (JST)</option>
+                                       <option value="Asia/Ho_Chi_Minh">Ho Chi Minh (ICT)</option>
+                                    </select>
+                                  </div>
+                                  <div>
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1 mb-1 block">Operating Hours</label>
+                                    <input type="text" value={profileForm.operatingHours} onChange={e=>setProfileForm(p=>({...p, operatingHours:e.target.value}))} className="w-full text-xs font-bold font-mono bg-white border border-gray-200 rounded-lg px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all" placeholder="e.g. 0 9 * * 1-5" />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          <div className="flex gap-2 mt-4 pt-2 border-t border-gray-100">
                             <button onClick={()=>{
                               onUpdateAgent(agent.key, profileForm);
                               setIsEditingProfile(false);
-                            }} className="flex-1 text-[10px] font-bold bg-blue-600 text-white px-3 py-2 rounded-md hover:bg-blue-700 shadow-sm transition-all">Save Profile</button>
+                            }} className="flex-1 text-[11px] font-bold bg-blue-600 text-white px-3 py-2.5 rounded-xl hover:bg-blue-700 shadow-sm transition-all text-center">Save Profile Details</button>
                             <button onClick={()=>{
-                              setProfileForm({ key: agent.key, label: agent.label, role: agent.role, email: agent.email||'', phone: agent.phone||'' });
+                              setProfileForm({ 
+                                key: agent.key, label: agent.label, role: agent.role, email: agent.email||'', phone: agent.phone||'', isHuman: agent.isHuman||false,
+                                triggerType: agent.triggerType || 'event', timezone: agent.timezone || 'America/Los_Angeles', operatingHours: agent.operatingHours || '24/7'
+                              });
                               setIsEditingProfile(false);
-                            }} className="flex-1 text-[10px] font-bold bg-gray-100 text-gray-600 px-3 py-2 rounded-md hover:bg-gray-200 shadow-sm transition-all">Cancel</button>
+                            }} className="flex-1 text-[11px] font-bold bg-gray-100 text-gray-600 px-3 py-2.5 rounded-xl hover:bg-gray-200 shadow-sm transition-all text-center">Cancel</button>
                           </div>
                         </div>
                       ) : (
                         <div className="group relative">
-                          <h4 className="font-bold text-gray-900 text-lg mb-0.5 flex items-center gap-2">
-                            {agent.label}
-                            <button onClick={()=>setIsEditingProfile(true)} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-500 transition-opacity">
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <h4 className="font-bold text-gray-900 text-lg mb-0.5">{agent.label}</h4>
+                              <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest leading-relaxed">ID: <strong className="text-gray-900">{agent.key}</strong> • {agent.role}</p>
+                            </div>
+                            <button onClick={()=>setIsEditingProfile(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors shadow-sm">
+                              <span>✎</span> Edit Profile
                             </button>
-                          </h4>
-                          <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest leading-relaxed">ID: <strong className="text-gray-900">{agent.key}</strong> • {agent.role}</p>
+                          </div>
                           {(agent.email || agent.phone) && (
-                            <p className="text-[11px] font-medium text-gray-500 mt-1 flex items-center gap-3">
+                            <p className="text-[11px] font-medium text-gray-500 mt-2 flex items-center gap-3">
                               {agent.email && <span>📧 {agent.email}</span>}
                               {agent.phone && <span>📱 {agent.phone}</span>}
                             </p>
                           )}
-                          <p className="text-[11px] font-bold text-gray-500 tracking-widest leading-relaxed mt-2 mb-2">{agent.isHuman ? '👥 HUMAN EXECUTIVE' : '🤖 AI EXECUTIVE'}</p>
+                          <div className="mt-3 mb-2 flex flex-wrap items-center gap-2">
+                            <p className="text-[11px] font-bold text-gray-500 tracking-widest leading-relaxed px-2 py-1 bg-gray-100/50 rounded inline-block border border-gray-200/50">
+                              {agent.isHuman ? '👥 HUMAN EXECUTIVE' : '🤖 AI EXECUTIVE'}
+                            </p>
+                            {!agent.isHuman && agent.triggerType === 'cron' && (
+                              <p className="text-[10px] font-bold text-amber-600 tracking-widest leading-relaxed px-2 py-1 bg-amber-50 rounded inline-block border border-amber-200/50 shadow-sm">
+                                🕒 CRON: {agent.operatingHours || '24/7'} ({agent.timezone || 'PT'})
+                              </p>
+                            )}
+                          </div>
                           <p className="text-sm text-gray-500 mt-2 leading-relaxed">{agent.desc || `This agent belongs to the ${agent.div.replace('_',' ')} division. It receives inputs from upstream agents and generates specialized strategic reports.`}</p>
                         </div>
                       )}
@@ -588,14 +673,65 @@ export default function Home() {
   const divisions = activeCompany.divisions || DEFAULT_DIVISIONS;
   const [edges, setEdges] = useState<any[]>(INITIAL_EDGES);
 
-  // Camera State
+  // Camera State (Synchronous Ref + Async State for Render)
+  const cameraRef = useRef({ x: 0, y: 0, z: 1 });
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({x: 0, y: 0});
+  
+  const flushCamera = () => {
+    setZoom(cameraRef.current.z);
+    setPan({ x: cameraRef.current.x, y: cameraRef.current.y });
+  };
   const [toolMode, setToolMode] = useState<'move'|'pan'>('move');
   const [isSpaceDown, setIsSpaceDown] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  
+  // Sidebar Tabs & Chat Minimization
+  const [activeSidebarTab, setActiveSidebarTab] = useState<'org'|'docs'>('org');
+  const [isChatMinimized, setIsChatMinimized] = useState(false);
+  const chatDragRef = useRef({ isDragging: false, startX: 0, startY: 0, offsetX: 0, offsetY: 0 });
+  const [chatPos, setChatPos] = useState({ x: 0, y: 0 }); // Will center on mount
+  const [isChatFocused, setIsChatFocused] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{x:number,y:number}|null>(null);
+  const [appView, setAppView] = useState<'canvas'|'calendar'>('canvas');
+  const [calView, setCalView] = useState<'day'|'week'|'bimonth'>('week');
+  const [calDate, setCalDate] = useState(() => new Date());
+  
+  useEffect(() => {
+    setChatPos({ x: window.innerWidth / 2 - 32, y: window.innerHeight - 100 });
+    const dismiss = () => setContextMenu(null);
+    window.addEventListener('click', dismiss);
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape') setContextMenu(null); });
+    return () => window.removeEventListener('click', dismiss);
+  }, []);
+
+  // Hierarchy logic
+  const getAgentLevel = (key: string) => {
+    let level = 0;
+    let curr = key;
+    for(let i=0; i<20; i++) {
+       const edge = edges.find((e:any) => e.to === curr);
+       if(!edge) break;
+       level++;
+       curr = edge.from;
+    }
+    return level;
+  };
+  const getManagerName = (key: string) => {
+    const edge = edges.find((e:any) => e.to === key);
+    if(!edge) return null;
+    return agents.find((a:any) => a.key === edge.from)?.label;
+  };
 
   const [editingDiv, setEditingDiv] = useState<string|null>(null);
   const [divEditName, setDivEditName] = useState('');
+  const [currentTipIndex, setCurrentTipIndex] = useState(0);
+  const [dismissedTips, setDismissedTips] = useState<Set<string>>(new Set());
+  const [isTipCollapsed, setIsTipCollapsed] = useState(false);
+
+  // Hydration fix
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   const saveSystemState = async (newComps: Record<string,any>, newActiveId: string) => {
     try { await fetch('http://localhost:1110/system-state', { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ activeCompanyId: newActiveId, companies: newComps }) }); } catch(err){}
@@ -624,6 +760,7 @@ export default function Home() {
     const c = companies[compId] || companies['default'];
     setPositions(Object.fromEntries((c.agents||[]).map((a:any) => [a.key, {x: a.x, y: a.y}])));
     saveSystemState(companies, compId);
+    setTimeout(() => fitView(c.agents || []), 50);
   };
 
   const agentMap = Object.fromEntries(agents.map((a:any)=>[a.key,a]));
@@ -677,6 +814,12 @@ export default function Home() {
   const [activeAgents, setActiveAgents]   = useState<Set<string>>(new Set());
   const [completedAgents, setCompletedAgents] = useState<Set<string>>(new Set());
   const [agentStreams, setAgentStreams]   = useState<Record<string,string>>({});
+
+  // Auto-expand tips conditionally when pipeline execution state changes
+  useEffect(() => {
+    setIsTipCollapsed(false); // Un-collapse to show newly triggered tips
+    setCurrentTipIndex(0); // Reset to show the most relevant active tip
+  }, [pipelineState, isConnected]);
   
   const [logs, setLogs] = useState<{agent:string, msg:string}[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -690,6 +833,8 @@ export default function Home() {
   
   const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(false);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
+  const [isHierarchyOpen, setIsHierarchyOpen] = useState(true);
+  const [isDocsOpen, setIsDocsOpen] = useState(true);
   
   // Draggable nodes state
   const [positions, setPositions] = useState<Record<string, {x:number, y:number}>>(
@@ -709,8 +854,9 @@ export default function Home() {
         setCompanies(data.companies);
         setActiveCompanyId(data.activeCompanyId);
         const active = data.companies[data.activeCompanyId];
-        if (active && active.agents) {
+        if (active && active.agents && active.agents.length > 0) {
           setPositions(Object.fromEntries(active.agents.map((a:any) => [a.key, {x: a.x, y: a.y}])));
+          setTimeout(() => fitView(active.agents), 50);
         }
       }
     }).catch(()=>{});
@@ -805,38 +951,61 @@ export default function Home() {
     return () => { window.removeEventListener('keydown', handleKeyDown); window.removeEventListener('keyup', handleKeyUp); };
   }, []);
 
-  const fitView = () => {
-    if (agents.length === 0) { setZoom(1); setPan({x:0, y:0}); return; }
-    const minX = Math.min(...agents.map((a:any) => a.x));
-    const maxX = Math.max(...agents.map((a:any) => a.x));
-    const minY = Math.min(...agents.map((a:any) => a.y));
-    const maxY = Math.max(...agents.map((a:any) => a.y));
+  function fitView(agentsToFit: any[] = agents) {
+    if (agentsToFit.length === 0) { 
+      cameraRef.current = { x: 0, y: 0, z: 1 };
+      flushCamera();
+      return; 
+    }
+    const minX = Math.min(...agentsToFit.map((a:any) => a.x));
+    const maxX = Math.max(...agentsToFit.map((a:any) => a.x));
+    const minY = Math.min(...agentsToFit.map((a:any) => a.y));
+    const maxY = Math.max(...agentsToFit.map((a:any) => a.y));
     const contentW = maxX - minX + NODE_W;
     const contentH = maxY - minY + NODE_H;
     const availW = window.innerWidth - (isLeftPanelOpen ? 288 : 0) - (isRightPanelOpen ? 320 : 0);
     const availH = window.innerHeight - 64; 
-    const scaleX = (availW - 100) / contentW; // 100px padding
+    const scaleX = (availW - 100) / contentW; 
     const scaleY = (availH - 100) / contentH;
     const newZoom = Math.max(0.1, Math.min(1, Math.min(scaleX, scaleY)));
-    setZoom(newZoom);
-    setPan({
-       x: (availW / 2 / newZoom) - (minX + contentW/2),
-       y: (availH / 2 / newZoom) - (minY + contentH/2)
-    });
+    
+    cameraRef.current = {
+       x: (availW / 2) - ((minX + contentW/2) * newZoom),
+       y: (availH / 2) - ((minY + contentH/2) * newZoom),
+       z: newZoom
+    };
+    flushCamera();
   };
 
   const handleCanvasWheel = (e: React.WheelEvent) => {
-    if (e.metaKey || e.ctrlKey) {
-      e.preventDefault();
-      setZoom(z => Math.max(0.1, Math.min(3, z + (e.deltaY * -0.002))));
-    } else if (toolMode === 'pan' || isSpaceDown) {
-      setPan(p => ({ x: p.x - (e.deltaX / zoom), y: p.y - (e.deltaY / zoom) }));
+    // If holding shift, allow horizontal trackpad pan
+    if (e.shiftKey) {
+      cameraRef.current.x -= e.deltaX;
+      cameraRef.current.y -= e.deltaY;
+      flushCamera();
+      return;
     }
+
+    e.preventDefault();
+    
+    const rect = e.currentTarget.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    const c = cameraRef.current;
+    const zoomMultiplier = Math.exp(e.deltaY * -0.002);
+    const newZ = Math.max(0.1, Math.min(3, c.z * zoomMultiplier));
+    
+    c.x = mouseX - (mouseX - c.x) * (newZ / c.z);
+    c.y = mouseY - (mouseY - c.y) * (newZ / c.z);
+    c.z = newZ;
+
+    flushCamera();
   };
 
   const handlePointerDownCanvas = (e: React.PointerEvent) => {
     if (e.target instanceof Element && e.target.closest('button')) return;
-    if (toolMode === 'pan' || isSpaceDown || e.button === 1) {
+    if (toolMode === 'pan' || isSpaceDown || e.button === 1 || e.button === 2) {
       isPanningCanvas.current = true;
       e.currentTarget.setPointerCapture(e.pointerId);
       dragOrigin.current = { x: e.clientX, y: e.clientY };
@@ -856,10 +1025,12 @@ export default function Home() {
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (isPanningCanvas.current) {
-      const dx = (e.clientX - dragOrigin.current.x) / zoom;
-      const dy = (e.clientY - dragOrigin.current.y) / zoom;
+      const dx = e.clientX - dragOrigin.current.x;
+      const dy = e.clientY - dragOrigin.current.y;
       dragOrigin.current = { x: e.clientX, y: e.clientY };
-      setPan(p => ({ x: p.x + dx, y: p.y + dy }));
+      cameraRef.current.x += dx;
+      cameraRef.current.y += dy;
+      flushCamera();
       return;
     }
     if (draggingNode) {
@@ -894,17 +1065,30 @@ export default function Home() {
   const modalDef = modalAgent ? agentMap[modalAgent] : null;
   const agentLogs = modalAgent ? logs.filter(l=>l.agent===modalAgent) : [];
 
-  let contextualTip = null;
-  if (!activeInstruction) {
-    contextualTip = "Select or write a new Instruction to begin building the Master Plan.";
-  } else if (pipelineState === 'idle') {
-    contextualTip = "Click the 'Launch' button in the top bar to run the system. The CEO will read your instruction and orchestrate the C-Suite.";
-  } else if (pipelineState === 'running') {
-    contextualTip = "The pipeline is live. Watch the Live Activity sidebar on the right to monitor the agents.";
-  } else if (pipelineState === 'done' && finalReport) {
-    contextualTip = "Execution complete! Click 'View Final Report' in the top bar to read the CEO's definitive verdict.";
+  // ── Tips & Status Logic ──
+  const defaultTips = [
+    "Select or write a new Instruction to begin building the Master Plan.",
+    "Click the 'Launch' button to run the system. The CEO will orchestrate the C-Suite.",
+    "The 3D Hierarchy allows you to group agents into logical divisions.",
+    "Use the tools at the bottom to pan, zoom, and Fit the canvas to your screen.",
+    "You can @mention specific agents like @CPO directly in your instruction prompt."
+  ];
+
+  let rawTips = [...defaultTips];
+
+  if (!isConnected) {
+    rawTips = ["SYSTEM OFFLINE: Run `python3 run.py start` in your terminal to boot the backend."];
+  } else {
+    // Dynamic context tips get priority
+    if (pipelineState === 'running') rawTips.unshift("The pipeline is live. Watch the Live Activity sidebar on the right to monitor the agents.");
+    else if (pipelineState === 'done' && finalReport) rawTips.unshift("Execution complete! Click 'View Final Report' in the top bar to read the CEO's definitive verdict.");
   }
-  const showTip = contextualTip && dismissedTip !== contextualTip;
+
+  const displayTips = rawTips.filter(t => !dismissedTips.has(t));
+  const showTipBox = displayTips.length > 0;
+  const activeTip = displayTips.length > 0 ? displayTips[currentTipIndex % displayTips.length] : "";
+
+  if (!mounted) return null; // Avoid all hydration mismatches by forcing client-only render
 
   return (
     <div className="min-h-screen bg-[#f5f5f7] font-sans overflow-hidden">
@@ -1005,63 +1189,81 @@ export default function Home() {
                   <option value="__NEW__" className="font-bold text-indigo-600">+ Create New Startup</option>
                </select>
             </div>
-            <div className="flex items-center gap-1.5 bg-white/90 px-2 py-1 rounded-md border border-gray-100 shadow-sm ml-2 sm:ml-4">
-                <span className="relative flex h-1.5 w-1.5">
-                  {isConnected && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"/>}
-                  <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${isConnected?'bg-green-500':'bg-red-400'}`}/>
-                </span>
-                <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest hidden xl:block">{isConnected?'Live':'Offline'}</span>
-            </div>
+         </div>
+
+         {/* View Switcher: Canvas / Calendar */}
+         <div className="flex items-center gap-0.5 bg-gray-100/70 rounded-xl p-1 border border-gray-200/50">
+           <button onClick={() => setAppView('canvas')}
+             className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${appView === 'canvas' ? 'bg-white shadow text-gray-800 border border-gray-200/60' : 'text-gray-500 hover:text-gray-700'}`}>
+             🌐 Org Tree
+           </button>
+           <button onClick={() => setAppView('calendar')}
+             className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${appView === 'calendar' ? 'bg-white shadow text-gray-800 border border-gray-200/60' : 'text-gray-500 hover:text-gray-700'}`}>
+             📅 Calendar
+           </button>
          </div>
 
          {/* Controls */}
          <div className="flex items-center gap-4">
              {/* Phase Progress */}
-             <div className="mr-4 hidden xl:block">
-               {pipelineState==='idle' && <p className="text-xs text-gray-400 font-medium">Ready — select an instruction and launch.</p>}
-               {pipelineState==='running' && pipelinePhase && (
-                 <div className="flex items-center gap-3">
-                   <span className="text-xs font-semibold text-gray-600">{pipelinePhase.label}</span>
-                   <div className="flex items-center gap-1">
-                     {Array.from({length:pipelinePhase.total},(_,i)=>(
-                       <div key={i} className={`h-1.5 w-6 rounded-full transition-all ${i<pipelinePhase.phase ? 'bg-blue-500' : i===pipelinePhase.phase-1 ? 'bg-blue-400 animate-pulse' : 'bg-gray-200'}`}/>
-                     ))}
-                   </div>
+             {/* Status & Tips Widget (Moved to Header) */}
+             <div className="mr-0 hidden xl:flex items-center bg-white/50 backdrop-blur-md rounded-2xl border border-white/60 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)] overflow-hidden h-10 transition-all">
+                {/* Permanent Live/Offline Status Toggle */}
+                <div onClick={() => showTipBox && setIsTipCollapsed(!isTipCollapsed)} className={`flex items-center gap-2 px-4 h-full transition-colors select-none ${showTipBox ? 'cursor-pointer hover:bg-black/5' : ''} ${isConnected?'bg-green-50/50':'bg-red-50/50'}`}>
+                    <span className="relative flex h-2 w-2">
+                      {isConnected && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"/>}
+                      <span className={`relative inline-flex rounded-full h-2 w-2 ${isConnected?'bg-green-500':'bg-red-500'}`}/>
+                    </span>
+                    <h4 className={`text-[10px] font-black uppercase tracking-widest ${isConnected?'text-green-600':'text-red-500'}`}>
+                      {isConnected?'System Live':'Offline'}
+                    </h4>
+                    {showTipBox && (
+                       <span className={`text-gray-400 text-[9px] transition-transform ml-1 ${isTipCollapsed ? 'scale-x-125' : 'scale-x-[-1.25]'}`}>▶</span>
+                    )}
+                </div>
+                
+                {/* Collapsible/Cycleable Tips */}
+                {showTipBox && !isTipCollapsed && (
+                  <div className="flex items-center gap-3 px-3 h-full border-l border-white/40 animate-in fade-in slide-in-from-right-4">
+                      <span className="text-sm drop-shadow-sm">{isConnected ? '💡' : '⚠️'}</span>
+                      <p className="text-[11px] text-gray-600 font-medium max-w-[280px] break-words line-clamp-2" title={activeTip}>
+                        {activeTip}
+                      </p>
+                      
+                      <div className="flex items-center gap-1 ml-1 bg-white/60 rounded-full px-1 py-0.5 shadow-inner">
+                          <button onClick={() => setCurrentTipIndex(p => (p - 1 + displayTips.length) % displayTips.length)} className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-white text-gray-400 hover:text-gray-900 transition-all text-[15px] font-black leading-none pb-0.5" title="Previous Tip">‹</button>
+                          <span className="text-[9px] font-bold text-gray-400 w-4 text-center">{(currentTipIndex % displayTips.length) + 1}/{displayTips.length}</span>
+                          <button onClick={() => setCurrentTipIndex(p => p + 1)} className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-white text-gray-400 hover:text-gray-900 transition-all text-[15px] font-black leading-none pb-0.5" title="Next Tip">›</button>
+                          <div className="w-px h-3 bg-gray-300 mx-1"></div>
+                          <button onClick={() => {
+                            setDismissedTips(prev => new Set(prev).add(activeTip));
+                            setCurrentTipIndex(p => Math.max(0, p - 1));
+                          }} className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-white text-gray-400 hover:text-red-500 transition-all text-xs font-bold" title="Dismiss Tip">✕</button>
+                      </div>
+                  </div>
+                )}
+             </div>
+
+             {/* Phase Progress when pipeline running */}
+             {pipelineState==='running' && pipelinePhase && (
+               <div className="flex items-center gap-3 mr-4 ml-4">
+                 <span className="text-xs font-semibold text-gray-600">{pipelinePhase.label}</span>
+                 <div className="flex items-center gap-1">
+                   {Array.from({length:pipelinePhase.total},(_,i)=>(
+                     <div key={i} className={`h-1.5 w-6 rounded-full transition-all ${i<pipelinePhase.phase ? 'bg-blue-500' : i===pipelinePhase.phase-1 ? 'bg-blue-400 animate-pulse' : 'bg-gray-200'}`}/>
+                   ))}
                  </div>
-               )}
-               {pipelineState==='done' && <span className="text-emerald-500 font-bold text-xs flex items-center gap-2">✓ {reportCount} reports filed</span>}
-             </div>
-
-             <div className="w-px h-6 bg-gray-200 flex-shrink-0 hidden xl:block"/>
-
-             <button onClick={()=>setInstructionModalOpen(true)}
-               className="px-4 py-2 bg-gray-50 border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 text-indigo-600 rounded-xl text-xs font-bold transition-all shadow-sm">
-               ✏️ Type Instruction
-             </button>
-
-             <div className="flex items-center gap-2 flex-shrink-0">
-               <div className="relative">
-                 <select value={activeInstruction} onChange={e=>setActiveInstruction(e.target.value)}
-                   className="bg-white border border-gray-200 text-gray-700 rounded-xl pl-3 pr-7 py-2 text-[11px] font-bold outline-none focus:ring-2 focus:ring-blue-300 appearance-none shadow-sm max-w-[160px] truncate">
-                   {instructions.length>0?instructions.map((m,i)=><option key={i}>{m}</option>):<option>No instructions</option>}
-                 </select>
-                 <span className="absolute inset-y-0 right-2 flex items-center text-gray-400 pointer-events-none text-[10px]">▾</span>
                </div>
-               <label className={`cursor-pointer px-3 py-2 rounded-xl border border-gray-200 text-[11px] font-bold text-gray-500 hover:border-blue-300 transition-colors bg-white shadow-sm ${uploading?'opacity-50':''}`}>
-                 <input type="file" accept=".md,.txt" className="hidden" onChange={handleUpload} disabled={uploading}/>
-                 {uploading?'⏳':'📎'}
-               </label>
-             </div>
+             )}
+             {pipelineState==='done' && <span className="text-emerald-500 font-bold text-xs flex items-center gap-2 mr-4 ml-4">✓ {reportCount} reports filed</span>}
+
+             {/* Top bar controls removed as they are now in the bottom chat bar */}
 
              {pipelineState==='running' && (
                <button onClick={stopPipeline} className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-500 border border-red-200 rounded-xl text-xs font-bold shadow-sm">⛔ Stop</button>
              )}
 
-             <button onClick={launchPipeline} disabled={!isConnected||pipelineState==='running'||!activeInstruction}
-               className="px-6 py-2 bg-gradient-to-r from-blue-500 to-violet-600 hover:from-blue-600 text-white rounded-xl shadow-md disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold flex items-center gap-2 transition-all">
-               {pipelineState==='running' ? <span className="animate-spin">⟳</span> : '▶'}
-               {pipelineState==='done'||pipelineState==='stopped' ? 'Run Again' : 'Launch'}
-             </button>
+
 
              {finalReport && pipelineState==='done' && (
                <button onClick={()=>setFinalReportModalOpen(true)} className="px-5 py-2 bg-emerald-50 border border-emerald-200 hover:border-emerald-300 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm animate-in fade-in slide-in-from-right-4 relative group">
@@ -1072,81 +1274,142 @@ export default function Home() {
          </div>
       </nav>
 
-      {/* ── Left Toggle Button (Frosted Pill) ── */}
-      <button onClick={()=>setIsLeftPanelOpen(!isLeftPanelOpen)}
-        className={`fixed top-1/2 -translate-y-1/2 z-[45] flex flex-col items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] bg-gradient-to-br from-white/80 to-white/40 backdrop-blur-3xl border border-white/60 shadow-[4px_0_24px_-8px_rgba(0,0,0,0.15)] hover:shadow-[8px_0_30px_-8px_rgba(0,0,0,0.25)] touch-none rounded-r-3xl isolate overflow-hidden group ${isLeftPanelOpen ? 'left-72 w-8 h-24 border-l-0' : 'left-0 w-12 hover:w-16 h-36 border-l-0 hover:bg-white/80'}`}>
-        <span className="text-xl mb-1 text-gray-500 group-hover:text-blue-500 transition-colors duration-500">{isLeftPanelOpen ? '‹' : '🏛️'}</span>
-        {!isLeftPanelOpen && <span className="text-[10px] font-black text-gray-400 group-hover:text-blue-500 uppercase tracking-[0.2em] mt-1 transition-colors duration-500" style={{writingMode:'vertical-rl',textOrientation:'mixed'}}>ORG MAP</span>}
-      </button>
+      {/* ── Left Sidebar Folder Tab Handles ── */}
+      <div className={`fixed z-[46] flex flex-col items-stretch transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] top-1/2 -translate-y-1/2 ${isLeftPanelOpen ? 'left-72' : 'left-0'}`}>
+        {/* ORG MAP Tab (Blue) */}
+        <button 
+          onClick={() => { setActiveSidebarTab('org'); setIsLeftPanelOpen(true); }}
+          className={`flex items-center justify-center gap-1.5 pr-3 pl-2 py-5 rounded-r-2xl border border-l-0 font-black text-[8px] uppercase tracking-[0.2em] transition-all duration-300 shadow-[3px_0_16px_-4px_rgba(0,0,0,0.12)] ${
+            activeSidebarTab === 'org' && isLeftPanelOpen
+              ? 'bg-blue-500 text-white border-blue-400 shadow-[3px_0_20px_-4px_rgba(59,130,246,0.4)]'
+              : 'bg-white/80 backdrop-blur-2xl text-blue-500 border-white/60 hover:bg-blue-50'
+          }`}
+          style={{writingMode:'vertical-rl', textOrientation:'mixed', transform: 'rotate(180deg)'}}
+        >
+          🏛️ Org Map
+        </button>
+        <div className="h-1" />
+        {/* DOCS Tab (Amber) */}
+        <button 
+          onClick={() => { setActiveSidebarTab('docs'); setIsLeftPanelOpen(true); }}
+          className={`flex items-center justify-center gap-1.5 pr-3 pl-2 py-5 rounded-r-2xl border border-l-0 font-black text-[8px] uppercase tracking-[0.2em] transition-all duration-300 shadow-[3px_0_16px_-4px_rgba(0,0,0,0.12)] ${
+            activeSidebarTab === 'docs' && isLeftPanelOpen
+              ? 'bg-amber-500 text-white border-amber-400 shadow-[3px_0_20px_-4px_rgba(245,158,11,0.4)]'
+              : 'bg-white/80 backdrop-blur-2xl text-amber-600 border-white/60 hover:bg-amber-50'
+          }`}
+          style={{writingMode:'vertical-rl', textOrientation:'mixed', transform: 'rotate(180deg)'}}
+        >
+          📁 Docs
+        </button>
+        {/* Collapse arrow — only when open */}
+        {isLeftPanelOpen && (
+          <button onClick={() => setIsLeftPanelOpen(false)}
+            className="mt-1 flex items-center justify-center w-full py-2 rounded-r-2xl bg-gray-100/60 border border-l-0 border-gray-200/50 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors text-[10px]"
+          >‹</button>
+        )}
+      </div>
 
-      {/* ── Left Sidebar (Company Hierarchy) ── */}
+      {/* ── Left Sidebar (Company Hierarchy & Docs) ── */}
       <aside className={`fixed top-16 left-0 bottom-0 w-72 bg-gradient-to-br from-white/70 to-white/20 backdrop-blur-3xl border-r border-white/50 shadow-2xl flex flex-col z-40 transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${isLeftPanelOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="h-14 border-b border-white/40 flex items-center px-5 bg-white/30 backdrop-blur-md">
-          <h2 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
-            🏛️ Hierarchy
-          </h2>
+        <div className="flex items-end px-2 pt-3 border-b border-gray-300/50 bg-white/20 gap-1.5 h-14">
+          <button onClick={() => setActiveSidebarTab('org')} className={`flex-1 rounded-t-xl py-2 px-1 text-[9px] font-black tracking-widest uppercase transition-all flex items-center justify-center gap-1.5 border border-B-0 border-b-0 ${activeSidebarTab === 'org' ? 'bg-white/80 shadow-md border-gray-300/50 text-blue-600 scale-105 origin-bottom relative z-10' : 'bg-gray-100/40 border-transparent text-gray-500 hover:bg-white/40'}`}>
+            🏛️ Org Map
+          </button>
+          <button onClick={() => setActiveSidebarTab('docs')} className={`flex-1 rounded-t-xl py-2 px-1 text-[9px] font-black tracking-widest uppercase transition-all flex items-center justify-center gap-1.5 border border-b-0 ${activeSidebarTab === 'docs' ? 'bg-[#FCFBF8] shadow-md border-amber-200 text-amber-700 scale-105 origin-bottom relative z-10' : 'bg-gray-100/40 border-transparent text-gray-500 hover:bg-white/40'}`}>
+            📁 Docs
+          </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-4">
-          {divisions.map((div:any) => {
-            const divKey = div.id;
-            const divAgents = agents.filter((a:any) => a.div === divKey);
-            const isExpanded = expandedDivs[divKey];
-            return (
-              <div key={divKey}>
-                <div className="flex items-center justify-between group cursor-pointer mb-1 border-b border-gray-100 pb-1" onClick={() => !editingDiv && setExpandedDivs(p => ({...p, [divKey]: !p[divKey]}))}>
-                  {editingDiv === divKey ? (
-                    <input type="text" autoFocus value={divEditName} 
-                      onClick={e=>e.stopPropagation()}
-                      onChange={e=>setDivEditName(e.target.value)}
-                      onBlur={()=>{
-                        if(divEditName.trim() && divEditName !== div.name) {
-                          const newDivs = divisions.map((d:any)=>d.id===divKey?{...d,name:divEditName}:d);
-                          updateActiveCompany(agents, newDivs);
-                        }
-                        setEditingDiv(null);
-                      }}
-                      onKeyDown={e=>{ if(e.key==='Enter') e.currentTarget.blur(); if(e.key==='Escape') setEditingDiv(null); }}
-                      className="text-[9px] font-bold uppercase tracking-widest bg-white/60 border border-gray-300 rounded px-1.5 py-0.5 outline-none text-gray-900 w-32 shadow-inner" />
-                  ) : (
-                    <h3 className="text-[9px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5 hover:text-gray-600 transition-colors">
-                      {div.name}
-                      <button onClick={e=>{e.stopPropagation(); setEditingDiv(divKey); setDivEditName(div.name);}} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-500 transition-opacity">✎</button>
-                    </h3>
-                  )}
-                   <div className="flex items-center gap-1">
-                     <button onClick={(e) => { e.stopPropagation(); setAddModalDiv(divKey); }} className="text-gray-400 hover:text-blue-500 hover:bg-white/50 rounded px-2 text-lg leading-none transition-colors">+</button>
-                     <span className="text-gray-300 text-[10px] w-4 text-center">{isExpanded ? '▼' : '▶'}</span>
+        <div className={`flex-1 overflow-y-auto p-4 custom-scrollbar transition-colors duration-500 ${activeSidebarTab === 'docs' ? 'bg-[#FCFBF8]/90' : 'bg-transparent'}`}>
+           
+           {/* Section 1: HIERARCHY */}
+           {activeSidebarTab === 'org' && (
+             <div className="mb-6 animate-in slide-in-from-left-4 fade-in duration-300">
+                <div className="space-y-4 pl-1">
+                  {divisions.map((div:any) => {
+                    const divKey = div.id;
+                    const divAgents = agents.filter((a:any) => a.div === divKey);
+                    const isExpanded = expandedDivs[divKey];
+                    return (
+                      <div key={divKey}>
+                        <div className="flex items-center justify-between group cursor-pointer mb-1 border-b border-gray-100 pb-1" onClick={() => !editingDiv && setExpandedDivs(p => ({...p, [divKey]: !p[divKey]}))}>
+                          {editingDiv === divKey ? (
+                            <input type="text" autoFocus value={divEditName} 
+                              onClick={e=>e.stopPropagation()}
+                              onChange={e=>setDivEditName(e.target.value)}
+                              onBlur={()=>{
+                                if(divEditName.trim() && divEditName !== div.name) {
+                                  const newDivs = divisions.map((d:any)=>d.id===divKey?{...d,name:divEditName}:d);
+                                  updateActiveCompany(agents, newDivs);
+                                }
+                                setEditingDiv(null);
+                              }}
+                              onKeyDown={e=>{ if(e.key==='Enter') e.currentTarget.blur(); if(e.key==='Escape') setEditingDiv(null); }}
+                              className="text-[9px] font-bold uppercase tracking-widest bg-white/60 border border-gray-300 rounded px-1.5 py-0.5 outline-none text-gray-900 w-32 shadow-inner" />
+                          ) : (
+                            <h3 className="text-[9px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5 hover:text-gray-600 transition-colors">
+                              {div.name}
+                              <button onClick={e=>{e.stopPropagation(); setEditingDiv(divKey); setDivEditName(div.name);}} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-500 transition-opacity">✎</button>
+                            </h3>
+                          )}
+                           <div className="flex items-center gap-1">
+                             <button onClick={(e) => { e.stopPropagation(); setAddModalDiv(divKey); }} className="text-gray-400 hover:text-blue-500 hover:bg-white/50 rounded px-2 text-lg leading-none transition-colors">+</button>
+                             <span className="text-gray-300 text-[10px] w-4 text-center">{isExpanded ? '▼' : '▶'}</span>
+                           </div>
+                        </div>
+                        {isExpanded && (
+                          <div className="mt-2 ml-2 border-l border-gray-200 pl-3 space-y-1">
+                            {divAgents.length === 0 && <span className="text-[10px] text-gray-400 italic">No personnel.</span>}
+                            {divAgents.map((a:any) => {
+                              const isActive = activeAgents.has(a.key);
+                              const isDone = completedAgents.has(a.key);
+                              return (
+                                <div key={a.key} className="relative group flex items-center p-1.5 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer" onClick={()=>setModalAgent(a.key)}>
+                                  <div className="absolute -left-3 top-1/2 w-3 border-t border-gray-200" />
+                                  <div className={`w-6 h-6 rounded-md flex items-center justify-center text-[11px] ${C[a.color]?.ic||C.gray.ic} mr-2`}>{a.icon}</div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-bold text-gray-900 flex items-center gap-1">
+                                      {a.key}
+                                      {isActive && <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"/>}
+                                      {isDone && !isActive && <span className="text-emerald-500 text-[9px]">✓</span>}
+                                    </p>
+                                    <p className="text-[9px] text-gray-400 truncate mt-0.5">{a.role}</p>
+                                  </div>
+                                  <button onClick={(e)=>{ e.stopPropagation(); setRemoveCandidate(a); }} className="opacity-0 group-hover:opacity-100 text-red-300 hover:text-red-500 hover:bg-red-50 px-2 py-0.5 rounded text-[10px] transition-all font-bold ml-1">
+                                    FIRE
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+             </div>
+           )}
+
+           {/* Section 2: COMPANY DOCS */}
+           {activeSidebarTab === 'docs' && (
+             <div className="animate-in slide-in-from-right-4 fade-in duration-300">
+                <p className="text-[10px] text-amber-700/70 font-bold uppercase tracking-widest mb-4">Central Repository</p>
+                <div className="space-y-2 pl-1">
+                   <div className="flex items-center gap-2 cursor-pointer hover:bg-white/80 p-2.5 rounded-lg text-gray-600 transition-colors shadow-sm border border-transparent hover:border-amber-200">
+                     <span className="text-amber-500 text-lg drop-shadow-sm">📁</span>
+                     <span className="text-xs font-bold text-amber-900">Operating Procedures</span>
+                   </div>
+                   <div className="flex items-center gap-2 cursor-pointer hover:bg-white/80 p-2.5 rounded-lg text-gray-600 transition-colors shadow-sm border border-transparent hover:border-amber-200">
+                     <span className="text-amber-500 text-lg drop-shadow-sm">📁</span>
+                     <span className="text-xs font-bold text-amber-900">Agent Action Playbooks</span>
+                   </div>
+                   <div className="flex items-center gap-2 cursor-pointer hover:bg-white/80 p-2.5 rounded-lg text-gray-600 transition-colors shadow-sm border border-transparent hover:border-amber-200" onClick={()=>setFinalReportModalOpen(true)}>
+                     <span className="text-blue-500 text-lg drop-shadow-sm">📄</span>
+                     <span className="text-xs font-bold text-gray-800">Final Executive Reports</span>
                    </div>
                 </div>
-                {isExpanded && (
-                  <div className="mt-2 ml-2 border-l border-gray-200 pl-3 space-y-1">
-                    {divAgents.length === 0 && <span className="text-[10px] text-gray-400 italic">No personnel.</span>}
-                    {divAgents.map((a:any) => {
-                      const isActive = activeAgents.has(a.key);
-                      const isDone = completedAgents.has(a.key);
-                      return (
-                        <div key={a.key} className="relative group flex items-center p-1.5 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer" onClick={()=>setModalAgent(a.key)}>
-                          <div className="absolute -left-3 top-1/2 w-3 border-t border-gray-200" />
-                          <div className={`w-6 h-6 rounded-md flex items-center justify-center text-[11px] ${C[a.color]?.ic||C.gray.ic} mr-2`}>{a.icon}</div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-bold text-gray-900 flex items-center gap-1">
-                              {a.key}
-                              {isActive && <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"/>}
-                              {isDone && !isActive && <span className="text-emerald-500 text-[9px]">✓</span>}
-                            </p>
-                            <p className="text-[9px] text-gray-400 truncate mt-0.5">{a.role}</p>
-                          </div>
-                          <button onClick={(e)=>{ e.stopPropagation(); setRemoveCandidate(a); }} className="opacity-0 group-hover:opacity-100 text-red-300 hover:text-red-500 hover:bg-red-50 px-2 py-0.5 rounded text-[10px] transition-all font-bold ml-1">
-                            FIRE
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+             </div>
+           )}
+
         </div>
       </aside>
 
@@ -1180,16 +1443,25 @@ export default function Home() {
       </aside>
 
       {/* ── Main Canvas ── */}
-      <main className={`fixed top-16 bottom-0 overflow-hidden bg-transparent relative transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${isSpaceDown||toolMode==='pan' ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
+      {appView === 'canvas' && (
+      <main className={`fixed top-16 bottom-0 overflow-hidden bg-transparent transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${isSpaceDown||toolMode==='pan' ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
             style={{ left: isLeftPanelOpen ? 288 : 0, right: isRightPanelOpen ? 320 : 0 }}
-            onPointerDown={handlePointerDownCanvas} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerLeave={handlePointerUp} onWheel={handleCanvasWheel}>
+            onPointerDown={handlePointerDownCanvas} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerLeave={handlePointerUp} onWheel={handleCanvasWheel}
+            onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY }); }}>
         
-        {/* Infinite Space Container */}
-        <div style={{ transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`, transformOrigin: '0 0', width: CANVAS_W, height: CANVAS_H, position: 'absolute', top: 0, left: 0 }} className="will-change-transform">
+        {mounted && <div style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: '0 0', width: CANVAS_W, height: CANVAS_H, position: 'absolute', top: 0, left: 0 }} className="">
+            {/* Architectural Grid Background */}
+            <div className="absolute inset-0 pointer-events-none z-0" 
+                 style={{
+                   backgroundImage: 'linear-gradient(rgba(0, 0, 0, 0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 0, 0, 0.02) 1px, transparent 1px)',
+                   backgroundSize: '24px 24px',
+                   backgroundPosition: 'center center'
+                 }} 
+            />
           <svg width={CANVAS_W} height={CANVAS_H} className="absolute top-0 left-0 pointer-events-none z-10 overflow-visible">
             <defs>
               <marker id="arrow-default" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                <path d="M 0 0 L 10 5 L 0 10 z" fill="#E5E7EB" />
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#D1D5DB" />
               </marker>
               {Object.entries(C).map(([colorName, cVals]) => (
                 <marker key={`arrow-${colorName}`} id={`arrow-${colorName}`} viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
@@ -1214,7 +1486,7 @@ export default function Home() {
           </svg>
 
           <div className="relative z-20" style={{width:CANVAS_W,height:CANVAS_H}}>
-            {agents.map(agent=>{
+            {agents.map((agent:any)=>{
               const ac=C[agent.color] || C.gray;
               const isActive=activeAgents.has(agent.key), isDone=completedAgents.has(agent.key);
               const pos = positions[agent.key];
@@ -1254,42 +1526,362 @@ export default function Home() {
               );
             })}
           </div>
-        </div>
+        </div>}
       </main>
+      )} {/* end canvas view */}
 
-      {/* ── Bottom Dock (Mac OS Style) ── */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-1 p-2 bg-gradient-to-t from-white/90 to-white/60 backdrop-blur-3xl border border-white/60 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] rounded-2xl">
-         <button onClick={()=>setToolMode('move')} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${toolMode==='move'&&!isSpaceDown ? 'bg-blue-100 text-blue-600 shadow-inner' : 'text-gray-500 hover:bg-white/80 hover:text-gray-900'}`} title="Select (Arrow Tool)">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" /></svg>
-         </button>
-         <button onClick={()=>setToolMode('pan')} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${toolMode==='pan'||isSpaceDown ? 'bg-blue-100 text-blue-600 shadow-inner' : 'text-gray-500 hover:bg-white/80 hover:text-gray-900'}`} title="Pan (Hold Space)">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11" /></svg>
-         </button>
-         <div className="w-px h-6 bg-gray-300/50 mx-1"></div>
-         <button onClick={()=>{setPan({x:0, y:0}); setZoom(1);}} className="w-10 h-10 rounded-xl flex items-center justify-center text-gray-500 hover:bg-white/80 hover:text-gray-900 transition-all font-bold text-lg" title="Reset View (Scale 100%)">⌂</button>
-         <div className="w-px h-6 bg-gray-300/50 mx-1"></div>
-         <button onClick={()=>setZoom(z=>Math.max(0.1, z-0.1))} className="w-10 h-10 rounded-xl flex items-center justify-center text-gray-500 hover:bg-white/80 hover:text-gray-900 transition-all font-bold text-xl" title="Zoom Out (Cmd -)">−</button>
-         <div className="w-12 h-10 flex items-center justify-center text-[10px] font-bold text-gray-400 select-none">
-            {Math.round(zoom * 100)}%
-         </div>
-         <button onClick={()=>setZoom(z=>Math.min(3, z+0.1))} className="w-10 h-10 rounded-xl flex items-center justify-center text-gray-500 hover:bg-white/80 hover:text-gray-900 transition-all font-bold text-xl" title="Zoom In (Cmd +)">+</button>
-         <div className="w-px h-6 bg-gray-300/50 mx-1"></div>
-         <button onClick={fitView} className="px-3 h-10 rounded-xl flex items-center justify-center text-[10px] font-bold text-gray-500 hover:bg-white/80 hover:text-gray-900 transition-all uppercase tracking-widest" title="Fit Entire Org to Screen">
-            Fit
-         </button>
+      {/* ── Calendar View ── */}
+      {appView === 'calendar' && (
+        <div className="fixed top-16 bottom-0 overflow-auto bg-[#fafafa] transition-all duration-700" style={{ left: isLeftPanelOpen ? 288 : 0, right: isRightPanelOpen ? 320 : 0 }}>
+          {/* Calendar Header */}
+          <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-xl border-b border-gray-100 px-8 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button onClick={() => { const d = new Date(calDate); if (calView==='day') d.setDate(d.getDate()-1); else if (calView==='week') d.setDate(d.getDate()-7); else d.setMonth(d.getMonth()-2); setCalDate(d); }} className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50">‹</button>
+              <h2 className="text-base font-bold text-gray-900 min-w-56 text-center">
+                {calView === 'day' && calDate.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'})}
+                {calView === 'week' && (()=>{const s=new Date(calDate);s.setDate(s.getDate()-s.getDay());const e=new Date(s);e.setDate(e.getDate()+6);return `${s.toLocaleDateString(undefined,{month:'short',day:'numeric'})} – ${e.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})}`;})()}
+                {calView === 'bimonth' && (()=>{const m2=new Date(calDate);m2.setMonth(m2.getMonth()+1);return `${calDate.toLocaleDateString(undefined,{month:'long',year:'numeric'})} – ${m2.toLocaleDateString(undefined,{month:'long',year:'numeric'})}`;})()}
+              </h2>
+              <button onClick={() => { const d = new Date(calDate); if (calView==='day') d.setDate(d.getDate()+1); else if (calView==='week') d.setDate(d.getDate()+7); else d.setMonth(d.getMonth()+2); setCalDate(d); }} className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50">›</button>
+              <button onClick={() => setCalDate(new Date())} className="px-3 py-1.5 rounded-xl border border-gray-200 text-[11px] font-bold text-gray-600 hover:bg-gray-50">Today</button>
+            </div>
+            <div className="flex items-center gap-0.5 bg-gray-100/70 rounded-xl p-1 border border-gray-200/50">
+              {(['day','week','bimonth'] as const).map(v => (
+                <button key={v} onClick={() => setCalView(v)} className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${calView===v?'bg-white shadow text-gray-800 border border-gray-200/60':'text-gray-500 hover:text-gray-700'}`}>
+                  {v==='day'?'Day':v==='week'?'Week':'2 Months'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Day View ── */}
+          {calView === 'day' && (
+            <div className="p-6">
+              <div className="grid border border-gray-200 rounded-2xl overflow-hidden bg-white shadow-sm">
+                {Array.from({length:24},(_,h) => (
+                  <div key={h} className="flex min-h-[52px] border-b border-gray-100 last:border-0 hover:bg-gray-50/50 group">
+                    <div className="w-16 shrink-0 px-3 py-2 text-[10px] font-bold text-gray-400 border-r border-gray-100">{h===0?'12 AM':h<12?`${h} AM`:h===12?'12 PM':`${h-12} PM`}</div>
+                    <div className="flex-1 px-3 py-1.5 flex flex-wrap gap-1.5 items-start">
+                      {agents.filter((a:any)=>{
+                        if(a.triggerType!=='cron'||!a.operatingHours) return false;
+                        const p=a.operatingHours.split(' ');
+                        if(p.length>=2){const ch=parseInt(p[1]);return !isNaN(ch)&&ch===h;}
+                        return false;
+                      }).map((a:any)=>{
+                        const ac=C[a.color]||C.gray;
+                        return <span key={a.key} className={`text-[10px] font-bold px-2 py-1 rounded-lg ${ac.ic}`}>{a.icon} {a.label}</span>;
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── Week View ── */}
+          {calView === 'week' && (()=>{
+            const s=new Date(calDate);s.setDate(s.getDate()-s.getDay());
+            const days=Array.from({length:7},(_,i)=>{const d=new Date(s);d.setDate(d.getDate()+i);return d;});
+            const today=new Date();
+            return(
+              <div className="p-6">
+                <div className="grid grid-cols-7 border border-gray-200 rounded-2xl overflow-hidden bg-white shadow-sm">
+                  {days.map((day,di)=>{
+                    const isToday=day.toDateString()===today.toDateString();
+                    return(
+                      <div key={di} className={`border-r border-gray-100 last:border-r-0 flex flex-col min-h-[480px] ${isToday?'bg-blue-50/30':''}`}>
+                        <div className={`px-3 py-3 border-b border-gray-100 text-center ${isToday?'bg-blue-500':'bg-gray-50'}`}>
+                          <p className={`text-[10px] font-bold uppercase tracking-widest ${isToday?'text-blue-100':'text-gray-400'}`}>{day.toLocaleDateString(undefined,{weekday:'short'})}</p>
+                          <p className={`text-lg font-black ${isToday?'text-white':'text-gray-800'}`}>{day.getDate()}</p>
+                        </div>
+                        <div className="p-2 flex flex-col gap-1.5">
+                          {agents.filter((a:any)=>{
+                            if(a.triggerType!=='cron'||!a.operatingHours) return false;
+                            const p=a.operatingHours.split(' ');
+                            if(p.length>=5){const dw=p[4];if(dw==='*')return true;return dw.split('-').flatMap((x:string)=>isNaN(parseInt(x))?[]:[parseInt(x)]).includes(day.getDay());}
+                            return true;
+                          }).map((a:any)=>{
+                            const ac=C[a.color]||C.gray;
+                            return(<div key={a.key} className={`text-[10px] font-bold px-2 py-1.5 rounded-xl ${ac.ic} flex items-center gap-1.5 cursor-pointer hover:opacity-80`} onClick={()=>setModalAgent(a.key)}><span>{a.icon}</span><span className="truncate">{a.label}</span></div>);
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* ── 2-Month View ── */}
+          {calView === 'bimonth' && (
+            <div className="p-6 grid grid-cols-2 gap-6">
+              {[0,1].map(mo=>{
+                const mDate=new Date(calDate.getFullYear(),calDate.getMonth()+mo,1);
+                const dim=new Date(mDate.getFullYear(),mDate.getMonth()+1,0).getDate();
+                const firstDow=mDate.getDay();
+                const today=new Date();
+                const cronAgents=agents.filter((a:any)=>a.triggerType==='cron');
+                return(
+                  <div key={mo} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div className="bg-gradient-to-r from-indigo-500 to-blue-600 px-5 py-4">
+                      <h3 className="text-white font-black text-sm">{mDate.toLocaleDateString(undefined,{month:'long',year:'numeric'})}</h3>
+                    </div>
+                    <div className="p-4">
+                      <div className="grid grid-cols-7 mb-2">{['Su','Mo','Tu','We','Th','Fr','Sa'].map(d=>(<div key={d} className="text-center text-[9px] font-black text-gray-400 uppercase py-1">{d}</div>))}</div>
+                      <div className="grid grid-cols-7 gap-y-1">
+                        {Array.from({length:firstDow},(_,i)=><div key={`e${i}`}/>)}
+                        {Array.from({length:dim},(_,i)=>{
+                          const date=i+1;
+                          const dayObj=new Date(mDate.getFullYear(),mDate.getMonth(),date);
+                          const isToday=dayObj.toDateString()===today.toDateString();
+                          const dotA=cronAgents.filter((a:any)=>{
+                            if(!a.operatingHours)return true;
+                            const p=a.operatingHours.split(' ');
+                            if(p.length>=5){const dw=p[4];if(dw==='*')return true;return dw.split('-').flatMap((x:string)=>isNaN(parseInt(x))?[]:[parseInt(x)]).includes(dayObj.getDay());}
+                            return true;
+                          });
+                          return(
+                            <div key={date} className={`aspect-square flex flex-col items-center justify-center rounded-xl cursor-pointer hover:bg-gray-50 transition-all ${isToday?'bg-blue-500 hover:bg-blue-600':'text-gray-700'}`}>
+                              <span className={`text-[11px] font-bold ${isToday?'text-white':''}`}>{date}</span>
+                              {dotA.length>0&&<div className="flex gap-0.5 mt-0.5">{dotA.slice(0,3).map((a:any)=>{const ac=C[a.color]||C.gray;return<div key={a.key} className={`w-1 h-1 rounded-full ${ac.dot}`}/>;})} {dotA.length>3&&<div className="w-1 h-1 rounded-full bg-gray-400"/>}</div>}
+                            </div>);
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )} {/* end calendar view */}
+
+      {/* ── Chat Toolbar & Command Center ── */}
+      <div 
+        className={isChatMinimized 
+          ? `fixed z-[60] flex items-center justify-center cursor-move touch-none drop-shadow-2xl hover:scale-105 transition-transform duration-200` 
+          : `fixed bottom-6 left-[21rem] right-[21rem] z-[60] flex flex-col items-center pointer-events-none transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${isLeftPanelOpen ? 'ml-6' : '-ml-20'} ${isRightPanelOpen ? 'mr-12' : '-mr-24'}`}
+        style={isChatMinimized ? { left: chatPos.x, top: chatPos.y } : {}}
+        onPointerDown={(e) => {
+          if (!isChatMinimized) return;
+          e.currentTarget.setPointerCapture(e.pointerId);
+          chatDragRef.current = { isDragging: true, startX: e.clientX, startY: e.clientY, offsetX: chatPos.x, offsetY: chatPos.y };
+        }}
+        onPointerMove={(e) => {
+          if (!chatDragRef.current.isDragging) return;
+          const dx = e.clientX - chatDragRef.current.startX;
+          const dy = e.clientY - chatDragRef.current.startY;
+          setChatPos({ x: chatDragRef.current.offsetX + dx, y: chatDragRef.current.offsetY + dy });
+        }}
+        onPointerUp={(e) => {
+          if (!isChatMinimized) return;
+          chatDragRef.current.isDragging = false;
+          e.currentTarget.releasePointerCapture(e.pointerId);
+        }}
+      >
+        {isChatMinimized ? (
+          <button 
+             onPointerDown={(e) => e.stopPropagation()}
+             onDoubleClick={() => setIsChatMinimized(false)}
+             className="relative flex items-center gap-2.5 px-5 py-3 rounded-2xl bg-white/75 backdrop-blur-2xl border border-white/80 shadow-[0_8px_32px_rgba(0,0,0,0.12),0_0_0_1px_rgba(255,255,255,0.5)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.18),0_0_30px_rgba(99,102,241,0.15)] hover:scale-105 active:scale-95 transition-all duration-200 group"
+             title="Double-click to open Command Center"
+          >
+             {/* Subtle glow ring */}
+             <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-indigo-400/0 to-violet-400/0 group-hover:from-indigo-400/10 group-hover:to-violet-400/10 transition-all duration-300" />
+             <span className="text-base">⌘</span>
+             <div className="flex flex-col items-start">
+               <span className="text-[10px] font-black text-gray-700 uppercase tracking-widest leading-none">Command</span>
+               <span className="text-[9px] font-medium text-gray-400 leading-none mt-0.5">double-click</span>
+             </div>
+             {/* Animated glow dot */}
+             <div className="w-2 h-2 rounded-full bg-indigo-400 shadow-[0_0_6px_rgba(99,102,241,0.8)] animate-pulse ml-1" />
+          </button>
+        ) : (
+          <>
+            {/* Floating Tool Controls (Fit/Zoom) */}
+            {showControls ? (
+              <div className="pointer-events-auto flex items-center gap-1 mb-3 px-3 py-1.5 bg-gradient-to-t from-white/90 to-white/60 backdrop-blur-md border border-white/60 shadow-sm rounded-full opacity-50 hover:opacity-100 transition-opacity">
+                 <button onClick={()=>setToolMode('move')} className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${toolMode==='move'&&!isSpaceDown ? 'bg-blue-100 text-blue-600' : 'text-gray-500 hover:bg-white hover:text-gray-900'}`} title="Select (Arrow Tool)">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" /></svg>
+                 </button>
+                 <button onClick={()=>setToolMode('pan')} className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${toolMode==='pan'||isSpaceDown ? 'bg-blue-100 text-blue-600' : 'text-gray-500 hover:bg-white hover:text-gray-900'}`} title="Pan (Hold Space)">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11" /></svg>
+                 </button>
+                 <div className="w-px h-4 bg-gray-300/50 mx-1"></div>
+                 <button onClick={()=>{cameraRef.current={x:0, y:0, z:1}; flushCamera();}} className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:bg-white hover:text-gray-900 transition-all font-bold" title="Reset View (Scale 100%)">⌂</button>
+                 <button onClick={()=>{cameraRef.current.z = Math.max(0.1, cameraRef.current.z-0.1); flushCamera();}} className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:bg-white hover:text-gray-900 transition-all font-bold text-lg" title="Zoom Out (Cmd -)">−</button>
+                 <div className="w-10 flex items-center justify-center text-[9px] font-bold text-gray-400 select-none">{Math.round(zoom * 100)}%</div>
+                 <button onClick={()=>{cameraRef.current.z = Math.min(3, cameraRef.current.z+0.1); flushCamera();}} className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:bg-white hover:text-gray-900 transition-all font-bold text-lg" title="Zoom In (Cmd +)">+</button>
+                 <div className="w-px h-4 bg-gray-300/50 mx-1"></div>
+                 <button onClick={()=>fitView()} className="px-2 h-8 rounded-full flex items-center justify-center text-[9px] font-bold text-gray-500 hover:bg-white hover:text-gray-900 transition-all uppercase tracking-widest" title="Fit Entire Org to Screen">Fit</button>
+                 
+                 {/* Hide Controls Button */}
+                 <button onClick={()=>setShowControls(false)} className="ml-1 px-2 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-all" title="Hide Canvas Controls">✕</button>
+              </div>
+            ) : (
+              <div className="pointer-events-auto flex items-center gap-1 mb-3 px-2 py-1 bg-white/50 backdrop-blur-md border border-white/60 shadow-sm rounded-full opacity-30 hover:opacity-100 transition-opacity cursor-pointer group" onClick={()=>setShowControls(true)}>
+                 <span className="text-[10px] text-gray-500 group-hover:text-blue-500 font-bold px-2">Show Canvas Tools</span>
+              </div>
+            )}
+
+            {/* Chat Input Area */}
+            <div className="pointer-events-auto w-full max-w-4xl bg-white/80 backdrop-blur-xl border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.15)] rounded-[24px] p-2 flex flex-col gap-2 relative group">
+              
+              {/* Floating Minimize Button */}
+              <button onClick={() => { setIsChatMinimized(true); setChatPos({ x: window.innerWidth/2 - 32, y: window.innerHeight - 100 }); }} 
+                      className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-white border border-gray-200 shadow-md flex items-center justify-center text-gray-400 hover:text-indigo-600 hover:border-indigo-300 transition-all opacity-0 group-hover:opacity-100" 
+                      title="Minimize to Command Center icon">
+                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" /></svg>
+              </button>
+
+              <div className="flex items-end gap-2 px-2 mt-1">
+                <div className="bg-gray-100/50 hover:bg-gray-100 rounded-xl px-3 py-1.5 flex items-center gap-2 cursor-pointer transition-colors border border-transparent hover:border-gray-200">
+                   <span className="text-gray-400 text-sm">🤖</span>
+                   <select className="bg-transparent text-xs font-bold text-gray-700 outline-none cursor-pointer appearance-none pr-4 mix-blend-multiply">
+                     <optgroup label="Fast / General">
+                       <option>LFM2 24B A2B</option>
+                       <option>Llama 3 8B Lite</option>
+                       <option>OpenAI GPT OSS 20B</option>
+                     </optgroup>
+                     <optgroup label="Planning / Reasoning">
+                       <option>Apriel 1.6 15B Thinker</option>
+                       <option>DeepSeek R1 0528</option>
+                     </optgroup>
+                     <optgroup label="Heavy Compute">
+                       <option>Llama 3.3 70B Turbo</option>
+                       <option>Qwen3.5 72B (397B MoE)</option>
+                     </optgroup>
+                   </select>
+                   <span className="text-[8px] text-gray-400 -ml-2 pointer-events-none">▼</span>
+                </div>
+                
+                <div className="flex-1"></div>
+
+                <button onClick={()=>setInstructionModalOpen(true)} className="text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-xl transition-colors shrink-0">
+                   📄 Browse Templates...
+                </button>
+              </div>
+
+              <div className="relative flex items-end gap-2 px-2 pb-1">
+                <div className="relative flex-1 bg-white border border-gray-200 rounded-2xl shadow-inner focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-300 transition-all overflow-hidden flex items-end">
+                   <label className={`shrink-0 h-12 w-12 flex items-center justify-center cursor-pointer text-gray-400 hover:text-blue-500 transition-colors ${uploading?'opacity-50':''}`} title="Attach File">
+                     <input type="file" accept=".md,.txt" className="hidden" onChange={handleUpload} disabled={uploading}/>
+                     {uploading ? <span className="animate-spin text-sm">⏳</span> : <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>}
+                   </label>
+                   <textarea 
+                      value={activeInstruction}
+                      onChange={(e)=>setActiveInstruction(e.target.value)}
+                      onFocus={()=>setIsChatFocused(true)}
+                      onBlur={()=>setIsChatFocused(false)}
+                      onKeyDown={(e) => {
+                        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                          e.preventDefault();
+                          if (isConnected && pipelineState !== 'running' && activeInstruction) launchPipeline();
+                        }
+                      }}
+                      className="flex-1 max-h-48 py-3.5 pr-4 bg-transparent outline-none resize-none text-sm text-gray-800 placeholder-gray-400 font-medium custom-scrollbar relative z-10"
+                      placeholder="Tell the CEO what you want to build... (Cmd + Enter to send)"
+                      rows={2}
+                   />
+                </div>
+                <button onClick={launchPipeline} disabled={!isConnected||pipelineState==='running'||!activeInstruction.trim()}
+                  className="shrink-0 h-12 w-12 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-md disabled:opacity-50 flex items-center justify-center transition-all group">
+                  {pipelineState==='running' ? <span className="animate-spin text-lg">⟳</span> : <svg className="w-5 h-5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
-      {/* ── Contextual Tips System ── */}
-      {showTip && (
-         <div className="fixed bottom-8 left-8 z-50 bg-white border border-gray-200 shadow-xl rounded-2xl p-4 flex items-start gap-4 max-w-sm animate-in fade-in slide-in-from-bottom-4">
-             <span className="text-2xl drop-shadow-sm">💡</span>
-             <div className="flex-1 mt-0.5">
-                 <h4 className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest mb-1.5">System Tip</h4>
-                 <p className="text-xs text-gray-600 leading-relaxed font-medium">{contextualTip}</p>
-             </div>
-             <button onClick={()=>setDismissedTip(contextualTip)} className="text-gray-400 hover:text-gray-900 transition-colors w-6 h-6 flex items-center justify-center rounded-full hover:bg-gray-100">✕</button>
-         </div>
+      {/* Apple Intelligence / Siri Fullscreen Edge Glow */}
+      <div className={`siri-intelligence-screen-edge ${isChatFocused || pipelineState === 'running' ? 'siri-intelligence-active' : ''}`} />
+
+      {/* Right-click Context Menu */}
+      {contextMenu && (
+        <div
+          className="fixed z-[200] animate-in fade-in slide-in-from-bottom-2 duration-150"
+          style={{ left: Math.min(contextMenu.x, window.innerWidth - 230), top: Math.min(contextMenu.y, window.innerHeight - 340) }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="w-56 bg-white/80 backdrop-blur-3xl rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.18),0_0_0_1px_rgba(255,255,255,0.6)] border border-white/70 p-1.5 flex flex-col gap-0.5">
+            {/* Header */}
+            <div className="px-3 py-2 mb-0.5">
+              <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.18em]">Canvas Options</p>
+            </div>
+
+            {/* Toggle Mode */}
+            <button onClick={() => { setToolMode(toolMode === 'move' ? 'pan' : 'move'); setContextMenu(null); }}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-gray-50 transition-colors group w-full">
+              <span className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500 group-hover:bg-blue-100 transition-colors text-sm">
+                {toolMode === 'move' ? '✋' : '↖️'}
+              </span>
+              <div className="flex-1">
+                <p className="text-[12px] font-bold text-gray-800">{toolMode === 'move' ? 'Switch to Pan Mode' : 'Switch to Select Mode'}</p>
+                <p className="text-[9px] text-gray-400 font-medium">or hold Space</p>
+              </div>
+              <kbd className="text-[8px] font-bold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-md">H</kbd>
+            </button>
+
+            <div className="h-px bg-gray-100 mx-3 my-0.5" />
+
+            {/* Hire Employee */}
+            <button onClick={() => { setAddModalDiv(divisions[0]?.id); setContextMenu(null); }}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-gray-50 transition-colors group w-full">
+              <span className="w-7 h-7 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-500 group-hover:bg-emerald-100 transition-colors text-sm">👤</span>
+              <div className="flex-1">
+                <p className="text-[12px] font-bold text-gray-800">Hire Employee</p>
+                <p className="text-[9px] text-gray-400 font-medium">Add agent to org</p>
+              </div>
+            </button>
+
+            {/* Reset View */}
+            <button onClick={() => { cameraRef.current={x:0,y:0,z:1}; flushCamera(); setContextMenu(null); }}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-gray-50 transition-colors group w-full">
+              <span className="w-7 h-7 rounded-lg bg-gray-50 flex items-center justify-center text-gray-500 group-hover:bg-gray-100 transition-colors text-base">⌂</span>
+              <div className="flex-1">
+                <p className="text-[12px] font-bold text-gray-800">Reset View</p>
+                <p className="text-[9px] text-gray-400 font-medium">Back to 100%</p>
+              </div>
+            </button>
+
+            {/* Fit View */}
+            <button onClick={() => { fitView(); setContextMenu(null); }}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-gray-50 transition-colors group w-full">
+              <span className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 group-hover:bg-indigo-100 transition-colors text-sm">🏠</span>
+              <div className="flex-1">
+                <p className="text-[12px] font-bold text-gray-800">Fit to Screen</p>
+                <p className="text-[9px] text-gray-400 font-medium">Show all agents</p>
+              </div>
+            </button>
+
+            <div className="h-px bg-gray-100 mx-3 my-0.5" />
+
+            {/* Zoom In */}
+            <button onClick={() => { cameraRef.current.z = Math.min(3, cameraRef.current.z + 0.25); flushCamera(); setContextMenu(null); }}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-gray-50 transition-colors group w-full">
+              <span className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center text-amber-500 group-hover:bg-amber-100 transition-colors font-bold text-lg leading-none">+</span>
+              <div className="flex-1">
+                <p className="text-[12px] font-bold text-gray-800">Zoom In</p>
+                <p className="text-[9px] text-gray-400 font-medium">Currently {Math.round(zoom * 100)}%</p>
+              </div>
+              <kbd className="text-[8px] font-bold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-md">⌘+</kbd>
+            </button>
+
+            {/* Zoom Out */}
+            <button onClick={() => { cameraRef.current.z = Math.max(0.1, cameraRef.current.z - 0.25); flushCamera(); setContextMenu(null); }}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-gray-50 transition-colors group w-full">
+              <span className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center text-amber-500 group-hover:bg-amber-100 transition-colors font-bold text-lg leading-none">−</span>
+              <div className="flex-1">
+                <p className="text-[12px] font-bold text-gray-800">Zoom Out</p>
+              </div>
+              <kbd className="text-[8px] font-bold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-md">⌘-</kbd>
+            </button>
+          </div>
+        </div>
       )}
+
     </div>
   );
 }

@@ -1,4 +1,4 @@
-# 👑 UHNWI+ Dynasty OS: Founder Onboarding
+# 👑 Dynasty OS: Founder Onboarding
 
 **[SYSTEM DIRECTIVE TO THE AI AGENT READING THIS FILE]**
 

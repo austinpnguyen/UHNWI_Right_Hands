@@ -41,3 +41,11 @@ company_files/feedback_logs/*.md
 backend/agent_config.json
 backend/agent_prompts.json
 00_FOUNDER_INSTRUCTION/testing.md
+
+# Brain DB — SQLite data files (keep schema code, exclude runtime data)
+brain/*.db
+brain/*.db-wal
+brain/*.db-shm
+
+# Process manager runtime state
+.pids.json
