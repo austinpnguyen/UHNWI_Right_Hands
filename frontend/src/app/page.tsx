@@ -101,7 +101,7 @@ function AgentModal({ agent, onClose, agentStream, agentLogs, activeAgents, comp
     fetch(`http://localhost:8080/agent-prompt/${agent.key}`)
       .then(r=>r.json())
       .then(d => setPromptContent(d.content || ''))
-      .catch(()=>setPromptContent('Could not load prompt.'))
+      .catch(()=>setPromptContent('⚠️ Could not reach backend.\n\nMake sure the Node server is running:\n  cd backend && node server.js'))
       .finally(()=>setLoadingPrompt(false));
   }, [tab, agent.key]);
 
@@ -282,6 +282,9 @@ export default function Home() {
   const [agentStreams, setAgentStreams]    = useState<Record<string,string>>(Object.fromEntries(ALL_KEYS.map(k=>[k,''])));
   const [modalAgent, setModalAgent]       = useState<string|null>(null);
   const [uploading, setUploading]         = useState(false);
+  const [pipelinePhase, setPipelinePhase] = useState<{phase:number,total:number,label:string}|null>(null);
+  const [reportCount, setReportCount]     = useState(0);
+  const [pipelineState, setPipelineState] = useState<'idle'|'running'|'done'|'stopped'>('idle');
   const logsRef = useRef<HTMLDivElement>(null);
 
   useEffect(()=>{ if(logsRef.current) logsRef.current.scrollTop=logsRef.current.scrollHeight; },[logs]);
@@ -293,6 +296,7 @@ export default function Home() {
     s.on('disconnect', ()=>setIsConnected(false));
     s.on('mandates_list',(data:string[])=>{ setMandates(data); if(data.length>0) setActiveMandate(data[0]); });
     s.on('agent_log',  (d:{agent:string,msg:string})=>setLogs(p=>[...p,d]));
+    s.on('pipeline_phase',(d:any)=>{ setPipelinePhase(d); setPipelineState('running'); });
     s.on('agent_active',(d:{agent:string,active:boolean})=>{
       setActiveAgents(prev=>{
         const next=new Set(prev);
@@ -303,7 +307,11 @@ export default function Home() {
     });
     s.on('agent_stream',(d:{agent:string,chunk:string})=>
       setAgentStreams(p=>({...p,[d.agent]:p[d.agent]+d.chunk})));
-    s.on('pipeline_complete',(_d:any)=>{ setActiveAgents(new Set()); });
+    s.on('pipeline_complete',(d:any)=>{
+      setActiveAgents(new Set());
+      setReportCount(d.reportCount||0);
+      setPipelineState(d.phase==='stopped'?'stopped':'done');
+    });
     return ()=>{ s.close(); };
   },[]);
 
@@ -311,7 +319,14 @@ export default function Home() {
     if(!socket||!activeMandate) return;
     setCompletedAgents(new Set()); setActiveAgents(new Set());
     setAgentStreams(Object.fromEntries(ALL_KEYS.map(k=>[k,'']))); setLogs([]);
+    setPipelinePhase(null); setPipelineState('running'); setReportCount(0);
     socket.emit('trigger_pipeline',{phase:'csuite',mandate:activeMandate});
+  };
+
+  const stopPipeline = ()=>{
+    if(!socket) return;
+    socket.emit('stop_pipeline');
+    setPipelineState('stopped');
   };
 
   const handleUpload = async(e:React.ChangeEvent<HTMLInputElement>)=>{
@@ -352,26 +367,97 @@ export default function Home() {
 
       <div className="relative z-10 max-w-screen-2xl mx-auto px-6 py-8 flex flex-col gap-6">
 
-        {/* Header */}
-        <header className="bg-white/80 backdrop-blur-2xl border border-white/60 shadow-sm rounded-3xl px-8 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-violet-500 to-pink-500">Dynasty OS</h1>
-            <p className="text-[10px] font-bold text-gray-400 tracking-widest uppercase mt-0.5">Execution Canvas · V10 · 16 agents</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 bg-white/90 px-3 py-1.5 rounded-full border border-gray-100 shadow-sm">
-              <span className="relative flex h-2 w-2">
-                {isConnected && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"/>}
-                <span className={`relative inline-flex rounded-full h-2 w-2 ${isConnected?'bg-green-500':'bg-red-400'}`}/>
-              </span>
-              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{isConnected?'Live':'Offline'}</span>
+        {/* ── Command Bar ── */}
+        <header className="bg-white/85 backdrop-blur-2xl border border-white/60 shadow-sm rounded-3xl px-6 py-4">
+          <div className="flex items-center gap-4 flex-wrap">
+
+            {/* Brand */}
+            <div className="flex-shrink-0">
+              <h1 className="text-lg font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-violet-500 to-pink-500 leading-none">Dynasty OS</h1>
+              <p className="text-[9px] font-bold text-gray-400 tracking-widest uppercase mt-0.5">V11 · 16 agents</p>
             </div>
-            {activeAgents.size>0 && (
-              <div className="px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-full flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse"/>
-                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">{activeAgents.size} running</span>
+
+            <div className="w-px h-8 bg-gray-200 flex-shrink-0 hidden xl:block"/>
+
+            {/* Mandate Selector + Upload */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="relative">
+                <select value={activeMandate} onChange={e=>setActiveMandate(e.target.value)}
+                  className="bg-gray-50 border border-gray-200 text-gray-700 rounded-xl pl-3 pr-7 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-300 appearance-none font-medium max-w-[220px] truncate">
+                  {mandates.length>0?mandates.map((m,i)=><option key={i}>{m}</option>):<option>No mandates</option>}
+                </select>
+                <span className="absolute inset-y-0 right-2 flex items-center text-gray-400 pointer-events-none text-xs">▾</span>
               </div>
-            )}
+              <label className={`cursor-pointer px-3 py-2 rounded-xl border border-gray-200 text-xs text-gray-500 hover:border-blue-300 hover:text-blue-500 transition-colors bg-white font-medium ${uploading?'opacity-50':''}`}>
+                <input type="file" accept=".md,.txt" className="hidden" onChange={handleUpload} disabled={uploading}/>
+                {uploading?'⏳':'📎 Upload'}
+              </label>
+            </div>
+
+            <div className="w-px h-8 bg-gray-200 flex-shrink-0 hidden xl:block"/>
+
+            {/* Phase Progress */}
+            <div className="flex-1 min-w-0">
+              {pipelineState==='idle' && (
+                <p className="text-xs text-gray-400 font-medium">Ready — select a mandate and launch.</p>
+              )}
+              {pipelineState==='running' && pipelinePhase && (
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5">
+                    {Array.from({length:pipelinePhase.total},(_,i)=>(
+                      <div key={i} className={`h-1.5 w-12 rounded-full transition-all ${
+                        i<pipelinePhase.phase ? 'bg-blue-500' : i===pipelinePhase.phase-1 ? 'bg-blue-400 animate-pulse' : 'bg-gray-200'
+                      }`}/>
+                    ))}
+                  </div>
+                  <span className="text-xs font-semibold text-gray-600 truncate">{pipelinePhase.label}</span>
+                  {/* Active agent pills */}
+                  <div className="flex gap-1 flex-wrap">
+                    {[...activeAgents].map(k=>{
+                      const a=agentMap[k]; const ac=C[a?.color||'blue'];
+                      return <span key={k} className={`text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse ${ac.badge}`}>{k}</span>;
+                    })}
+                  </div>
+                </div>
+              )}
+              {pipelineState==='done' && (
+                <div className="flex items-center gap-2">
+                  <span className="text-emerald-500 font-bold text-sm">✓</span>
+                  <span className="text-xs font-semibold text-gray-600">{reportCount} reports filed · {completedAgents.size} agents complete</span>
+                  <span className="text-[10px] text-gray-400">· Click any node to read output</span>
+                </div>
+              )}
+              {pipelineState==='stopped' && (
+                <div className="flex items-center gap-2">
+                  <span className="text-amber-500 font-bold text-sm">⛔</span>
+                  <span className="text-xs font-semibold text-amber-600">Pipeline stopped · {completedAgents.size} agents completed before stop</span>
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {pipelineState==='running' && (
+                <button onClick={stopPipeline}
+                  className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-500 border border-red-200 rounded-xl text-xs font-bold transition-all">
+                  ⛔ Stop
+                </button>
+              )}
+              <button onClick={launchPipeline}
+                disabled={!isConnected||pipelineState==='running'||!activeMandate}
+                className="px-5 py-2 bg-gradient-to-r from-blue-500 to-violet-600 hover:from-blue-600 hover:to-violet-700 text-white rounded-xl shadow-[0_4px_12px_rgba(99,102,241,0.3)] disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:-translate-y-0.5 font-bold text-xs flex items-center gap-2">
+                {pipelineState==='running' ? <span className="animate-spin">⟳</span> : '▶'}
+                {pipelineState==='done'||pipelineState==='stopped' ? 'Run Again' : 'Launch'}
+              </button>
+              {/* Connection dot */}
+              <div className="flex items-center gap-1.5 bg-white/90 px-3 py-2 rounded-xl border border-gray-100 shadow-sm">
+                <span className="relative flex h-1.5 w-1.5">
+                  {isConnected && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"/>}
+                  <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${isConnected?'bg-green-500':'bg-red-400'}`}/>
+                </span>
+                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest hidden xl:block">{isConnected?'Live':'Offline'}</span>
+              </div>
+            </div>
           </div>
         </header>
 
@@ -379,31 +465,6 @@ export default function Home() {
 
           {/* Sidebar */}
           <div className="xl:col-span-3 flex flex-col gap-5">
-            <div className="bg-white/80 backdrop-blur-2xl border border-white/60 shadow-sm rounded-3xl p-5 flex flex-col gap-4">
-              <h2 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">⚡ Control Center</h2>
-              <div>
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Upload Mandate</label>
-                <label className={`flex items-center justify-center gap-2 w-full border-2 border-dashed border-gray-200 hover:border-blue-300 rounded-2xl py-3.5 cursor-pointer transition-all text-xs text-gray-400 ${uploading?'opacity-60':''}`}>
-                  <input type="file" accept=".md,.txt" className="hidden" onChange={handleUpload} disabled={uploading}/>
-                  {uploading?'⏳ Uploading…':'📎 Drop or click to upload'}
-                </label>
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Active Mandate</label>
-                <div className="relative">
-                  <select value={activeMandate} onChange={e=>setActiveMandate(e.target.value)}
-                    className="w-full bg-white border border-gray-200 text-gray-800 rounded-xl px-3 py-2.5 text-xs outline-none focus:ring-2 focus:ring-blue-300 appearance-none shadow-sm font-medium">
-                    {mandates.length>0?mandates.map((m,i)=><option key={i}>{m}</option>):<option>No mandates found</option>}
-                  </select>
-                  <span className="absolute inset-y-0 right-2 flex items-center text-gray-400 pointer-events-none">▾</span>
-                </div>
-              </div>
-              <button onClick={launchPipeline} disabled={!isConnected||activeAgents.size>0||!activeMandate}
-                className="w-full py-3.5 bg-gradient-to-r from-blue-500 to-violet-600 hover:from-blue-600 hover:to-violet-700 text-white rounded-2xl shadow-[0_8px_20px_rgba(99,102,241,0.25)] disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:-translate-y-0.5 font-bold text-xs tracking-wide flex justify-between items-center px-4 group">
-                <span>{activeAgents.size>0?`${activeAgents.size} agents running…`:'Launch Agent Chain'}</span>
-                <span className="group-hover:translate-x-1 transition-transform">→</span>
-              </button>
-            </div>
 
             <div className="bg-white/80 backdrop-blur-2xl border border-white/60 shadow-sm rounded-3xl p-5 flex flex-col gap-3">
               <div className="flex justify-between items-center">

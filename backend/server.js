@@ -111,26 +111,23 @@ function stripFrontmatter(text) {
     return text.replace(/^---[\s\S]*?---\s*/m, '').trim();
 }
 
-// Stream one agent call, filtering <think>...</think> reasoning tokens
+// Stream one agent — filters <think> tokens and respects socket.cancelled flag
 async function runAgent({ socket, agentKey, userMessage, outputPath }) {
     const config     = loadConfig();
     const model      = config[agentKey]?.model || DEFAULT_MODEL;
     const promptPath = AGENT_PROMPT_MAP[agentKey];
 
     if (!promptPath || !fs.existsSync(path.join(__dirname, promptPath))) {
-        socket.emit('agent_log', { agent: agentKey, msg: `No prompt file found for ${agentKey}, skipping.` });
+        socket.emit('agent_log', { agent: agentKey, msg: `No prompt file for ${agentKey}, skipping.` });
         return '';
     }
+    if (socket.cancelled) throw new Error('STOPPED');
 
     const systemPrompt = stripFrontmatter(fs.readFileSync(path.join(__dirname, promptPath), 'utf8'));
-
     socket.emit('agent_log',    { agent: agentKey, msg: `[${agentKey}] Starting on ${model}...` });
     socket.emit('agent_active', { agent: agentKey, active: true });
 
-    const GUARDRAIL = `IMPORTANT: You do NOT have access to any tools, file systems, or external APIs.
-ALL context you need is provided directly in this message.
-Do NOT output any <tool_calls>, <function_call>, Glob, Read, or similar blocks.
-Generate your full written report NOW using only the text provided below.\n---\n\n`;
+    const GUARDRAIL = `IMPORTANT: You do NOT have access to any tools, file systems, or external APIs.\nALL context you need is provided directly in this message.\nDo NOT output any <tool_calls>, <function_call>, Glob, Read, or similar blocks.\nGenerate your full written report NOW using only the text provided below.\n---\n\n`;
 
     const runner = await together.chat.completions.create({
         messages: [
@@ -140,14 +137,17 @@ Generate your full written report NOW using only the text provided below.\n---\n
         model, temperature: 0.6, max_tokens: 2500, stream: true
     });
 
-    // Filter <think>...</think> reasoning tokens
     let output = "", inThink = false, thinkBuf = "";
     for await (const chunk of runner) {
+        if (socket.cancelled) {
+            socket.emit('agent_log',    { agent: agentKey, msg: `[${agentKey}] Stopped by Founder.` });
+            socket.emit('agent_active', { agent: agentKey, active: false });
+            throw new Error('STOPPED');
+        }
         const token = chunk.choices[0]?.delta?.content || "";
         if (!token) continue;
         thinkBuf += token;
-        let flushed = "", buf = thinkBuf;
-        thinkBuf = "";
+        let flushed = "", buf = thinkBuf; thinkBuf = "";
         while (buf.length > 0) {
             if (!inThink) {
                 const oi = buf.indexOf('<think>');
@@ -162,10 +162,11 @@ Generate your full written report NOW using only the text provided below.\n---\n
         if (flushed) { output += flushed; socket.emit('agent_stream', { agent: agentKey, chunk: flushed }); }
     }
 
-    const outDir = path.dirname(outputPath);
-    if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
-    fs.writeFileSync(outputPath, output);
-
+    if (output) {
+        const outDir = path.dirname(outputPath);
+        if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
+        fs.writeFileSync(outputPath, output);
+    }
     socket.emit('agent_log',    { agent: agentKey, msg: `[${agentKey}] Complete -> ${path.basename(outputPath)}` });
     socket.emit('agent_active', { agent: agentKey, active: false });
     return output;
@@ -173,29 +174,38 @@ Generate your full written report NOW using only the text provided below.\n---\n
 
 io.on('connection', (socket) => {
     console.log('[NODE] Client connected');
+    socket.cancelled = false;
 
     socket.on('get_mandates', () => {
         const files = fs.readdirSync(INPUT_DIR).filter(f => /\.(md|txt)$/.test(f));
         socket.emit('mandates_list', files);
     });
 
+    // Founder can halt the pipeline at any point mid-stream
+    socket.on('stop_pipeline', () => {
+        socket.cancelled = true;
+        socket.emit('agent_log', { agent: 'System', msg: '⛔ Pipeline stopped by Founder.' });
+    });
+
     socket.on('trigger_pipeline', async (data) => {
         if (!data.mandate) return;
+        socket.cancelled = false;
         const mandateContent = fs.readFileSync(path.join(INPUT_DIR, data.mandate), 'utf8');
-        const outDir         = path.join(__dirname, '../company_files/crucible_testing');
-        const tag            = `${data.mandate.replace(/\.(md|txt)$/, '')}_${Date.now()}`;
+        const outDir = path.join(__dirname, '../company_files/crucible_testing');
+        const tag    = `${data.mandate.replace(/\.(md|txt)$/, '')}_${Date.now()}`;
+
+        socket.emit('pipeline_phase', { phase: 1, total: 2, label: 'Phase 1 — CEO: Master Plan' });
 
         try {
-            // Phase 1: CEO synthesizes the master plan
             const ceoPlan = await runAgent({
                 socket, agentKey: 'CEO',
                 userMessage: `EXECUTE YOUR ROLE. Synthesize a Master Plan V1 from the Founder's Mandate below.\n\nMANDATE:\n${mandateContent}`,
-                outputPath:  path.join(outDir, `master_plan_v1_${tag}.md`)
+                outputPath: path.join(outDir, `master_plan_v1_${tag}.md`)
             });
 
-            socket.emit('agent_log', { agent: 'System', msg: 'CEO complete. Dispatching C-Suite in parallel...' });
+            socket.emit('agent_log',    { agent: 'System', msg: 'CEO complete. Dispatching C-Suite in parallel...' });
+            socket.emit('pipeline_phase', { phase: 2, total: 2, label: 'Phase 2 — C-Suite: Parallel Rundown' });
 
-            // Phase 2: CPO, CFO, CMO, COO run concurrently
             const sharedCtx = `MANDATE:\n${mandateContent}\n\nCEO MASTER PLAN:\n${ceoPlan}`;
             await Promise.all([
                 runAgent({ socket, agentKey: 'CPO', userMessage: `EXECUTE YOUR ROLE. Design the full product architecture.\n\n${sharedCtx}`, outputPath: path.join(outDir, `architecture_${tag}.md`) }),
@@ -204,12 +214,16 @@ io.on('connection', (socket) => {
                 runAgent({ socket, agentKey: 'COO', userMessage: `EXECUTE YOUR ROLE. Map out the full operational execution framework.\n\n${sharedCtx}`, outputPath: path.join(outDir, `ops_framework_${tag}.md`) }),
             ]);
 
-            socket.emit('agent_log',        { agent: 'System', msg: `Pipeline [${data.phase.toUpperCase()}] complete. All C-Suite reports filed.` });
-            socket.emit('pipeline_complete', { phase: data.phase });
+            socket.emit('agent_log',        { agent: 'System', msg: 'Pipeline [CSUITE] complete. 5 reports filed.' });
+            socket.emit('pipeline_complete', { phase: 'csuite', reportCount: 5 });
         } catch (err) {
-            console.error('[NODE] Pipeline error:', err.message);
-            socket.emit('agent_log',        { agent: 'FATAL ERROR', msg: err.message });
-            socket.emit('pipeline_complete', { phase: 'error' });
+            if (err.message === 'STOPPED') {
+                socket.emit('pipeline_complete', { phase: 'stopped', reportCount: 0 });
+            } else {
+                console.error('[NODE] Pipeline error:', err.message);
+                socket.emit('agent_log',        { agent: 'FATAL ERROR', msg: err.message });
+                socket.emit('pipeline_complete', { phase: 'error', reportCount: 0 });
+            }
         }
     });
 
@@ -218,3 +232,4 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 8080;
 server.listen(PORT, () => console.log(`\n[SYSTEM] Dynasty OS Backend running on :${PORT}`));
+
