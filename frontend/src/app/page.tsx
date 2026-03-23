@@ -92,7 +92,7 @@ function AgentModal({ agent, onClose, agentStream, agentLogs, activeAgents, comp
 
   // Load config when modal opens
   useEffect(() => {
-    fetch('http://localhost:8080/agent-config')
+    fetch('http://localhost:1110/agent-config')
       .then(r=>r.json())
       .then(cfg => setSelectedModel(cfg[agent.key]?.model || 'ServiceNow-AI/Apriel-1.6-15b-Thinker'))
       .catch(()=>{});
@@ -102,7 +102,7 @@ function AgentModal({ agent, onClose, agentStream, agentLogs, activeAgents, comp
   useEffect(() => {
     if (configMode !== 'prompt' || promptContent) return;
     setLoadingPrompt(true);
-    fetch(`http://localhost:8080/agent-prompt/${agent.key}`)
+    fetch(`http://localhost:1110/agent-prompt/${agent.key}`)
       .then(r=>r.json())
       .then(d => setPromptContent(d.content || ''))
       .catch(()=>setPromptContent('⚠️ Could not reach backend.\n\nMake sure the Node server is running:\n  cd backend && node server.js'))
@@ -116,7 +116,7 @@ function AgentModal({ agent, onClose, agentStream, agentLogs, activeAgents, comp
 
   const saveConfig = async () => {
     setSaving(true);
-    await fetch(`http://localhost:8080/agent-config/${agent.key}`, {
+    await fetch(`http://localhost:1110/agent-config/${agent.key}`, {
       method: 'PUT', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ model: selectedModel })
     });
@@ -126,7 +126,7 @@ function AgentModal({ agent, onClose, agentStream, agentLogs, activeAgents, comp
 
   const savePrompt = async () => {
     setSaving(true);
-    await fetch(`http://localhost:8080/agent-prompt/${agent.key}`, {
+    await fetch(`http://localhost:1110/agent-prompt/${agent.key}`, {
       method:'PUT', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ content: promptContent })
     });
@@ -370,7 +370,7 @@ function MandateModal({ activeMandate, onClose, onSaved }: any) {
 
   useEffect(() => {
     if (tab === 'custom' && activeMandate && !loaded) {
-      fetch(`http://localhost:8080/mandate/${activeMandate}`)
+      fetch(`http://localhost:1110/mandate/${activeMandate}`)
         .then(r=>r.json()).then(d=>{ if(d.content) setContent(d.content); setLoaded(true); }).catch(()=>{});
     } else if (tab !== 'custom') {
       setContent(MANDATE_TEMPLATES[tab].content);
@@ -382,7 +382,7 @@ function MandateModal({ activeMandate, onClose, onSaved }: any) {
     if (!filename.trim()) return;
     setSaving(true);
     try {
-      const res = await fetch('http://localhost:8080/save-mandate', {
+      const res = await fetch('http://localhost:1110/save-mandate', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ filename, content })
       });
@@ -481,7 +481,7 @@ export default function Home() {
   useEffect(()=>{ if(logsRef.current) logsRef.current.scrollTop=logsRef.current.scrollHeight; },[logs]);
 
   useEffect(()=>{
-    const s = io('http://localhost:8080');
+    const s = io('http://localhost:1110');
     setSocket(s);
     s.on('connect',    ()=>{ setIsConnected(true); s.emit('get_mandates'); });
     s.on('disconnect', ()=>setIsConnected(false));
@@ -525,7 +525,7 @@ export default function Home() {
     setUploading(true);
     const form=new FormData(); form.append('mandate',e.target.files[0]);
     try{
-      const res=await fetch('http://localhost:8080/upload',{method:'POST',body:form});
+      const res=await fetch('http://localhost:1110/upload',{method:'POST',body:form});
       const d=await res.json();
       if(d.filename&&socket){ socket.emit('get_mandates'); setActiveMandate(d.filename); }
     }catch{}

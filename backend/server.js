@@ -270,6 +270,6 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => console.log('[NODE] Client disconnected'));
 });
 
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 1110;
 server.listen(PORT, () => console.log(`\n[SYSTEM] Dynasty OS Backend running on :${PORT}`));
 

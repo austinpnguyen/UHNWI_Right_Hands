@@ -106,7 +106,7 @@ This framework is now powered by a **React Next.js Frontend** and an **Event-Dri
 ### 🏗️ Technical Architecture Map
 ```text
 =================================================================================
-[ FRONTEND: React / Next.js ]   (Runs on Port 3000)
+[ FRONTEND: React / Next.js ]   (Runs on Port 80)
   |_ Role: The visual Command Center. Renders the interactive Agent Node Map.
   |_ Tech: Next.js 15, TailwindCSS, Socket.io-client, ReactMarkdown.
 =================================================================================
@@ -114,7 +114,7 @@ This framework is now powered by a **React Next.js Frontend** and an **Event-Dri
              | (Real-time bi-directional WebSockets & REST API)
              v
 =================================================================================
-[ BACKEND: Node.js Event Bus ]  (Runs on Port 8080)
+[ BACKEND: Node.js Event Bus ]  (Runs on Port 1110)
   |_ Role: The Brain. Orchestrates agents, manages configurations, saves outputs.
   |_ Tech: Express.js, Socket.io (Server), Together AI SDK, Multer.
 =================================================================================
@@ -149,18 +149,19 @@ cd backend
 npm install
 node server.js
 ```
-*You should see `[SYSTEM] Dynasty OS Backend running on :8080`. Keep this tab open.*
+*You should see `[SYSTEM] Dynasty OS Backend running on :1110`. Keep this tab open.*
 
 **Step 3: Launch The Next.js Command Center (Terminal 2)**
 Open a **brand new Terminal tab** (e.g., press `Cmd + T` on Mac), navigate to the frontend folder, and launch the React UI.
 ```bash
 cd frontend
 npm install
-npm run dev
+sudo npm run dev
 ```
+*(Note: Binding to Port 80 requires `sudo` privileges on Mac/Linux. Enter your computer password when prompted).*
 
 **Step 4: Execute The Dynasty**
-Open your browser to `http://localhost:3000`. 
+Open your browser to `http://localhost`. 
 1. Use the **"Type Mandate"** button to open the Mandate Editor and choose one of the 3 built-in templates (Aggressive Pivot, New Product Launch, Ops Overhaul), or write your own.
 2. Click **"Save & Select Mandate"**.
 3. Click the glowing **"Launch"** button.
