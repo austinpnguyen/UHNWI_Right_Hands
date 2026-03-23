@@ -518,6 +518,9 @@ export default function Home() {
   const [finalReportModalOpen, setFinalReportModalOpen] = useState(false);
   const [dismissedTip, setDismissedTip] = useState<string|null>(null);
   
+  const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(false);
+  const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
+  
   // Draggable nodes state
   const [positions, setPositions] = useState<Record<string, {x:number, y:number}>>(
     Object.fromEntries(AGENTS.map(a => [a.key, { x: a.x, y: a.y }]))
@@ -671,10 +674,13 @@ export default function Home() {
       {/* ── Top Navigation Bar ── */}
       <nav className="fixed top-0 left-0 right-0 h-16 border-b border-gray-200 bg-white/90 backdrop-blur-md z-50 shadow-sm px-6 flex items-center justify-between">
          {/* Brand */}
-         <div className="flex items-center gap-3">
+         <div className="flex items-center gap-3 flex-shrink-0">
+            <button onClick={()=>setIsLeftPanelOpen(!isLeftPanelOpen)} className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${isLeftPanelOpen?'bg-gray-100 text-gray-900':'text-gray-400 hover:text-gray-900 hover:bg-gray-100'}`}>
+              ☰
+            </button>
             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-600 to-blue-600 shadow-inner flex items-center justify-center text-white font-bold text-lg">U</div>
-            <h1 className="text-xl font-black bg-clip-text text-transparent bg-gradient-to-r from-gray-900 via-slate-800 to-gray-900 tracking-tight">UHNWI+ idea checker</h1>
-            <div className="flex items-center gap-1.5 bg-white/90 px-2 py-1 rounded-md border border-gray-100 shadow-sm ml-4">
+            <h1 className="text-xl font-black bg-clip-text text-transparent bg-gradient-to-r from-gray-900 via-slate-800 to-gray-900 tracking-tight hidden sm:block">UHNWI+ idea checker</h1>
+            <div className="flex items-center gap-1.5 bg-white/90 px-2 py-1 rounded-md border border-gray-100 shadow-sm ml-2 sm:ml-4">
                 <span className="relative flex h-1.5 w-1.5">
                   {isConnected && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"/>}
                   <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${isConnected?'bg-green-500':'bg-red-400'}`}/>
@@ -738,11 +744,55 @@ export default function Home() {
                  📄 View Final Report
                </button>
              )}
+             
+             <div className="w-px h-6 bg-gray-200 flex-shrink-0 hidden sm:block ml-2"/>
+             <button onClick={()=>setIsRightPanelOpen(!isRightPanelOpen)} className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${isRightPanelOpen?'bg-blue-50 text-blue-600':'text-gray-400 hover:text-gray-900 hover:bg-gray-100'}`}>
+               📡
+             </button>
          </div>
       </nav>
 
+      {/* ── Left Sidebar (Company Hierarchy) ── */}
+      <aside className={`fixed top-16 left-0 bottom-0 w-72 bg-white/90 backdrop-blur-2xl border-r border-white/60 shadow-xl flex flex-col z-40 transition-transform duration-300 ${isLeftPanelOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="h-14 border-b border-gray-100 flex items-center px-5 bg-gray-50/50">
+          <h2 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
+            🏛️ Hierarchy
+          </h2>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-6">
+          {['company', 'inner_circle', 'shield', 'market'].map(divKey => {
+            const divAgents = AGENTS.filter(a => a.div === divKey);
+            const divNames = { company:'C-Suite', inner_circle:'Inner Circle', shield:'The Shield', market:'The Market' };
+            return (
+              <div key={divKey}>
+                <h3 className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2 border-b border-gray-100 pb-1">{divNames[divKey as keyof typeof divNames]}</h3>
+                <div className="space-y-1">
+                  {divAgents.map(a => {
+                    const isActive = activeAgents.has(a.key);
+                    const isDone = completedAgents.has(a.key);
+                    return (
+                      <div key={a.key} onClick={()=>setModalAgent(a.key)} className="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors group">
+                        <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10px] ${C[a.color].ic}`}>{a.icon}</div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-gray-900 flex items-center gap-1">
+                            {a.key} 
+                            {isActive && <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"/>}
+                            {isDone && !isActive && <span className="text-emerald-500 text-[9px]">✓</span>}
+                          </p>
+                          <p className="text-[9px] text-gray-400 truncate group-hover:text-gray-600">{a.role}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </aside>
+
       {/* ── Right Sidebar (Live Activity Logs) ── */}
-      <aside className="fixed top-16 right-0 bottom-0 w-80 bg-white/90 backdrop-blur-2xl border-l border-white/60 shadow-xl flex flex-col z-40">
+      <aside className={`fixed top-16 right-0 bottom-0 w-80 bg-white/90 backdrop-blur-2xl border-l border-white/60 shadow-xl flex flex-col z-40 transition-transform duration-300 ${isRightPanelOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="h-14 border-b border-gray-100 flex items-center justify-between px-5 bg-gray-50/50">
           <h2 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
@@ -764,7 +814,8 @@ export default function Home() {
       </aside>
 
       {/* ── Main Canvas ── */}
-      <main className="fixed top-16 left-0 right-80 bottom-0 overflow-auto bg-transparent relative custom-scrollbar p-10"
+      <main className="fixed top-16 bottom-0 overflow-auto bg-transparent relative custom-scrollbar p-10 transition-all duration-300"
+            style={{ left: isLeftPanelOpen ? 288 : 0, right: isRightPanelOpen ? 320 : 0 }}
             onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerLeave={handlePointerUp}>
         <div className="relative mx-auto my-10" style={{width:CANVAS_W, minHeight:CANVAS_H}}>
           <svg width={CANVAS_W} height={CANVAS_H} className="absolute top-0 left-0 pointer-events-none z-10 overflow-visible">
