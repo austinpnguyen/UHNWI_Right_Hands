@@ -540,7 +540,7 @@ export default function Home() {
     s.on('pipeline_complete',(d:any)=>{
       setActiveAgents(new Set());
       setReportCount(d.reportCount||0);
-      setPipelineState(d.phase==='stopped'?'stopped':'done');
+      setPipelineState(d.phase==='error'?'idle':d.phase==='stopped'?'stopped':'done');
       if (d.finalReportContent) {
         setFinalReport({ fileName: d.finalReport, content: d.finalReportContent });
       }

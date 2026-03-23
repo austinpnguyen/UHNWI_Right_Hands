@@ -255,29 +255,31 @@ io.on('connection', (socket) => {
             socket.emit('agent_log', { agent: 'System', msg: 'Phase 3 complete. CEO is synthesizing Final Report (Phase 4)...' });
             socket.emit('pipeline_phase', { phase: 4, total: 4, label: 'Phase 4 — CEO: Final Synthesis' });
 
-            const finalReportCtx = `
-INSTRUCTION:\n${instructionContent}
+            const truncate = (str, len = 2000) => str && str.length > len ? str.slice(0, len) + "\n\n...[TRUNCATED FOR BREVITY]" : (str || "");
 
-CEO MASTER PLAN V1:\n${ceoPlan}
+            const finalReportCtx = `
+INSTRUCTION:\n${truncate(instructionContent, 3000)}
+
+CEO MASTER PLAN V1:\n${truncate(ceoPlan, 3000)}
 
 --- C-SUITE TEST OUTPUTS ---
-CPO Architecture: ${cpoArch}
-CFO Financials: ${cfoFin}
-CMO GTM: ${cmoGtm}
-COO Ops: ${cooOps}
+CPO Architecture: ${truncate(cpoArch, 2000)}
+CFO Financials: ${truncate(cfoFin, 2000)}
+CMO GTM: ${truncate(cmoGtm, 2000)}
+COO Ops: ${truncate(cooOps, 2000)}
 
 --- PHASE 3 DIVISIONAL AUDIT FEEDBACK ---
-CIO: ${phase3Outputs[0]}
-Auditor: ${phase3Outputs[1]}
-CLO: ${phase3Outputs[2]}
-Mkt Analyst: ${phase3Outputs[3]}
-Competitor: ${phase3Outputs[4]}
-Target Buyer: ${phase3Outputs[5]}
-Unaware: ${phase3Outputs[6]}
-COS: ${phase3Outputs[7]}
-CISO: ${phase3Outputs[8]}
-Fixer: ${phase3Outputs[9]}
-Whisperer: ${phase3Outputs[10]}
+CIO: ${truncate(phase3Outputs[0], 2000)}
+Auditor: ${truncate(phase3Outputs[1], 2000)}
+CLO: ${truncate(phase3Outputs[2], 2000)}
+Mkt Analyst: ${truncate(phase3Outputs[3], 2000)}
+Competitor: ${truncate(phase3Outputs[4], 2000)}
+Target Buyer: ${truncate(phase3Outputs[5], 2000)}
+Unaware: ${truncate(phase3Outputs[6], 2000)}
+COS: ${truncate(phase3Outputs[7], 2000)}
+CISO: ${truncate(phase3Outputs[8], 2000)}
+Fixer: ${truncate(phase3Outputs[9], 2000)}
+Whisperer: ${truncate(phase3Outputs[10], 2000)}
 `;
 
             const finalReportFileName = `final_report_${tag}.md`;
