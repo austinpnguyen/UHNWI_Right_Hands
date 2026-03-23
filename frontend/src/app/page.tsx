@@ -28,22 +28,22 @@ const TOGETHER_MODELS = [
 
 // ─── All 16 agents ──────────────────────────────────────────────────────────
 const AGENTS = [
-  { key:'CEO',         label:'CEO',              role:'Master Plan',          icon:'♟️', color:'blue',    div:'company',      x:460,  y:30  },
-  { key:'CPO',         label:'CPO',              role:'Architecture',         icon:'🛠️', color:'indigo',  div:'company',      x:60,   y:170 },
-  { key:'CFO',         label:'CFO',              role:'Financials',           icon:'📈', color:'emerald', div:'company',      x:280,  y:170 },
-  { key:'CMO',         label:'CMO',              role:'Brand Strategy',       icon:'📣', color:'pink',    div:'company',      x:500,  y:170 },
-  { key:'COO',         label:'COO',              role:'Operations',           icon:'⚙️', color:'orange',  div:'company',      x:720,  y:170 },
-  { key:'COS',         label:'Chief of Staff',   role:'Exec Coordination',    icon:'📋', color:'violet',  div:'inner_circle', x:60,   y:350 },
-  { key:'CIO',         label:'CIO',              role:'Tech Infrastructure',  icon:'💻', color:'blue',    div:'inner_circle', x:260,  y:350 },
-  { key:'CISO',        label:'CISO',             role:'Security & Privacy',   icon:'🛡️', color:'slate',   div:'inner_circle', x:460,  y:350 },
-  { key:'FIXER',       label:'The Fixer',        role:'Crisis Resolution',    icon:'🔧', color:'amber',   div:'inner_circle', x:660,  y:350 },
-  { key:'WHISPERER',   label:'The Whisperer',    role:'Intelligence & Recon', icon:'👁️', color:'purple',  div:'inner_circle', x:860,  y:350 },
-  { key:'MKT_ANALYST', label:'Market Analyst',   role:'Competitive Intel',    icon:'🔍', color:'blue',    div:'market',       x:60,   y:530 },
-  { key:'COMPETITOR',  label:'Competitor Sim',   role:'Adversarial Model',   icon:'⚔️', color:'red',     div:'market',       x:260,  y:530 },
-  { key:'TARGET_BUYER',label:'Target Buyer',     role:'Buyer Psychology',     icon:'🎯', color:'emerald', div:'market',       x:460,  y:530 },
-  { key:'UNAWARE',     label:'Unaware Audience', role:'Cold Market Sim',      icon:'🌐', color:'gray',    div:'market',       x:660,  y:530 },
-  { key:'AUDITOR',     label:'Auditor',          role:'Financial Compliance', icon:'📊', color:'amber',   div:'shield',       x:260,  y:710 },
-  { key:'CLO',         label:'CLO',              role:'Legal Strategy',       icon:'⚖️', color:'slate',   div:'shield',       x:460,  y:710 },
+  { key:'CEO',         label:'CEO',              role:'Master Plan',          icon:'♟️', color:'blue',    div:'company',      x:550,  y:40  },
+  { key:'CPO',         label:'CPO',              role:'Architecture',         icon:'🛠️', color:'indigo',  div:'company',      x:100,  y:180 },
+  { key:'CFO',         label:'CFO',              role:'Financials',           icon:'📈', color:'emerald', div:'company',      x:400,  y:180 },
+  { key:'CMO',         label:'CMO',              role:'Brand Strategy',       icon:'📣', color:'pink',    div:'company',      x:700,  y:180 },
+  { key:'COO',         label:'COO',              role:'Operations',           icon:'⚙️', color:'orange',  div:'company',      x:1000, y:180 },
+  { key:'CIO',         label:'CIO',              role:'Tech Infrastructure',  icon:'💻', color:'blue',    div:'inner_circle', x:100,  y:340 },
+  { key:'AUDITOR',     label:'Auditor',          role:'Financial Compliance', icon:'📊', color:'amber',   div:'shield',       x:300,  y:340 },
+  { key:'CLO',         label:'CLO',              role:'Legal Strategy',       icon:'⚖️', color:'slate',   div:'shield',       x:500,  y:340 },
+  { key:'MKT_ANALYST', label:'Market Analyst',   role:'Competitive Intel',    icon:'🔍', color:'blue',    div:'market',       x:600,  y:340 },
+  { key:'COMPETITOR',  label:'Competitor Sim',   role:'Adversarial Model',    icon:'⚔️', color:'red',     div:'market',       x:800,  y:340 },
+  { key:'COS',         label:'Chief of Staff',   role:'Exec Coordination',    icon:'📋', color:'violet',  div:'inner_circle', x:900,  y:340 },
+  { key:'CISO',        label:'CISO',             role:'Security & Privacy',   icon:'🛡️', color:'slate',   div:'inner_circle', x:1100, y:340 },
+  { key:'TARGET_BUYER',label:'Target Buyer',     role:'Buyer Psychology',     icon:'🎯', color:'emerald', div:'market',       x:600,  y:480 },
+  { key:'UNAWARE',     label:'Unaware Audience', role:'Cold Market Sim',      icon:'🌐', color:'gray',    div:'market',       x:800,  y:480 },
+  { key:'FIXER',       label:'The Fixer',        role:'Crisis Resolution',    icon:'🔧', color:'amber',   div:'inner_circle', x:900,  y:480 },
+  { key:'WHISPERER',   label:'The Whisperer',    role:'Intelligence & Recon', icon:'👁️', color:'purple',  div:'inner_circle', x:1100, y:480 },
 ];
 
 const EDGES = [
@@ -53,7 +53,7 @@ const EDGES = [
   { from:'COO',to:'COS'},{ from:'COO',to:'CISO'},{ from:'COO',to:'FIXER'},{ from:'COO',to:'WHISPERER'},
 ];
 
-const NODE_W=190, NODE_H=85, CANVAS_W=1100, CANVAS_H=840;
+const NODE_W=190, NODE_H=85, CANVAS_W=1320, CANVAS_H=640;
 
 const C: Record<string,any> = {
   blue:    { ring:'ring-blue-400',    glow:'shadow-[0_0_20px_rgba(96,165,250,0.5)]',    dot:'bg-blue-500',    badge:'bg-blue-100 text-blue-700',     h:'from-blue-50',    ic:'bg-blue-100 text-blue-600',    edge:'#60A5FA' },
@@ -340,12 +340,20 @@ export default function Home() {
   const [socket, setSocket]               = useState<any>(null);
   const [activeAgents, setActiveAgents]   = useState<Set<string>>(new Set());
   const [completedAgents, setCompletedAgents] = useState<Set<string>>(new Set());
-  const [agentStreams, setAgentStreams]    = useState<Record<string,string>>(Object.fromEntries(ALL_KEYS.map(k=>[k,''])));
+  const [agentStreams, setAgentStreams]   = useState<Record<string,string>>(Object.fromEntries(ALL_KEYS.map(k=>[k,''])));
   const [modalAgent, setModalAgent]       = useState<string|null>(null);
   const [uploading, setUploading]         = useState(false);
   const [pipelinePhase, setPipelinePhase] = useState<{phase:number,total:number,label:string}|null>(null);
   const [reportCount, setReportCount]     = useState(0);
   const [pipelineState, setPipelineState] = useState<'idle'|'running'|'done'|'stopped'>('idle');
+  
+  // Draggable nodes state
+  const [positions, setPositions] = useState<Record<string, {x:number, y:number}>>(
+    Object.fromEntries(AGENTS.map(a => [a.key, { x: a.x, y: a.y }]))
+  );
+  const [draggingNode, setDraggingNode] = useState<string|null>(null);
+  const [dragOffset, setDragOffset] = useState({x:0, y:0});
+
   const logsRef = useRef<HTMLDivElement>(null);
 
   useEffect(()=>{ if(logsRef.current) logsRef.current.scrollTop=logsRef.current.scrollHeight; },[logs]);
@@ -402,9 +410,44 @@ export default function Home() {
     setUploading(false); e.target.value='';
   };
 
-  const bezier = (from:typeof AGENTS[0], to:typeof AGENTS[0]) => {
-    const x1=from.x+NODE_W/2,y1=from.y+NODE_H, x2=to.x+NODE_W/2,y2=to.y, cy=(y1+y2)/2;
+  const bezier = (fromKey: string, toKey: string) => {
+    const from = positions[fromKey], to = positions[toKey];
+    if (!from || !to) return '';
+    const x1=from.x+NODE_W/2, y1=from.y+NODE_H;
+    const x2=to.x+NODE_W/2,   y2=to.y - 8;
+    const cy=(y1+y2)/2;
     return `M ${x1} ${y1} C ${x1} ${cy}, ${x2} ${cy}, ${x2} ${y2}`;
+  };
+
+  // Node drag handlers
+  const handlePointerDown = (e: React.PointerEvent, key: string) => {
+    if (e.target instanceof Element && e.target.closest('button')) return; // Ignore if clicking a button
+    setDraggingNode(key);
+    // Calculate offset relative to node top-left
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    // We adjust for scroll inside the canvas wrapper later or map against standard clientX
+    // A simpler approach: Just store the mouse pos minus current state pos
+    const p = positions[key];
+    setDragOffset({ x: e.clientX - p.x, y: e.clientY - p.y });
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!draggingNode) return;
+    setPositions(prev => ({
+      ...prev,
+      [draggingNode]: {
+        x: e.clientX - dragOffset.x,
+        y: e.clientY - dragOffset.y
+      }
+    }));
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (draggingNode) {
+      setDraggingNode(null);
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
   };
 
   const modalDef = modalAgent ? agentMap[modalAgent] : null;
@@ -555,29 +598,34 @@ export default function Home() {
           <div className="xl:col-span-9">
             <div className="bg-white/80 backdrop-blur-2xl border border-white/60 shadow-sm rounded-3xl overflow-hidden relative">
               <div className="absolute inset-0 opacity-25" style={{backgroundImage:'radial-gradient(circle, #d1d5db 1px, transparent 1px)',backgroundSize:'28px 28px'}}/>
-              {/* Division labels */}
-              {[
-                {label:'🏛️ Company',     top:14,  color:'#3B82F6'},
-                {label:'🔐 Inner Circle', top:193, color:'#7C3AED'},
-                {label:'📡 Market',       top:373, color:'#EC4899'},
-                {label:'⚖️ Shield',       top:554, color:'#D97706'},
-              ].map(r=>(
-                <div key={r.label} className="absolute left-3 text-[9px] font-black uppercase tracking-widest opacity-40 pointer-events-none z-20"
-                  style={{top:r.top, color:r.color}}>{r.label}</div>
-              ))}
 
-              <div className="relative overflow-auto p-6" style={{minHeight:CANVAS_H+48}}>
-                <svg width={CANVAS_W} height={CANVAS_H} className="absolute top-6 left-6 pointer-events-none z-10">
+              <div className="relative overflow-auto p-6" style={{minHeight:CANVAS_H+48}}
+                   onPointerMove={handlePointerMove}
+                   onPointerUp={handlePointerUp}
+                   onPointerLeave={handlePointerUp}>
+                <svg width={CANVAS_W} height={CANVAS_H} className="absolute top-6 left-6 pointer-events-none z-10 overflow-visible">
+                  <defs>
+                    <marker id="arrow-default" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                      <path d="M 0 0 L 10 5 L 0 10 z" fill="#E5E7EB" />
+                    </marker>
+                    {Object.entries(C).map(([colorName, cVals]) => (
+                      <marker key={`arrow-${colorName}`} id={`arrow-${colorName}`} viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill={cVals.edge} />
+                      </marker>
+                    ))}
+                  </defs>
                   <style>{`@keyframes dash{to{stroke-dashoffset:-24}}`}</style>
                   {EDGES.map(e=>{
-                    const from=agentMap[e.from],to=agentMap[e.to];
+                    const to=agentMap[e.to];
                     const ec=C[to.color];
                     const isActive=activeAgents.has(e.to), isDone=completedAgents.has(e.to);
-                    return <path key={`${e.from}-${e.to}`} d={bezier(from,to)} fill="none"
-                      stroke={isActive||isDone?ec.edge:'#E5E7EB'}
-                      strokeWidth={isActive?2.5:1.5} strokeLinecap="round"
-                      strokeDasharray={isActive?"8 4":undefined}
-                      style={isActive?{animation:'dash 0.6s linear infinite'}:{}}/>;
+                    const isHighlighted = isActive || isDone;
+                    return <path key={`${e.from}-${e.to}`} d={bezier(e.from, e.to)} fill="none"
+                      stroke={isHighlighted ? ec.edge : '#E5E7EB'}
+                      strokeWidth={isActive ? 2.5 : 1.5} strokeLinecap="round"
+                      strokeDasharray={isActive ? "8 4" : undefined}
+                      markerEnd={`url(#arrow-${isHighlighted ? to.color : 'default'})`}
+                      style={isActive ? {animation:'dash 0.6s linear infinite'} : {}}/>;
                   })}
                 </svg>
 
@@ -585,17 +633,24 @@ export default function Home() {
                   {AGENTS.map(agent=>{
                     const ac=C[agent.color];
                     const isActive=activeAgents.has(agent.key), isDone=completedAgents.has(agent.key);
+                    const pos = positions[agent.key];
+                    if (!pos) return null;
                     return (
                       <div key={agent.key}
-                        onClick={()=>setModalAgent(agent.key)}
-                        title="Click to configure"
-                        className={`absolute cursor-pointer rounded-2xl border bg-white transition-all duration-300 select-none group
-                          ${isActive?`ring-2 ${ac.ring} ${ac.glow} border-transparent scale-105 z-30`:''}
-                          ${!isActive?'border-gray-200 hover:border-gray-300 hover:shadow-md hover:scale-[1.02]':''}
+                        onPointerDown={(e) => handlePointerDown(e, agent.key)}
+                        onClick={()=> {
+                          // Only open modal if we didn't drag
+                          if (!draggingNode) setModalAgent(agent.key);
+                        }}
+                        title="Drag to move, click to configure"
+                        className={`absolute cursor-pointer rounded-2xl border bg-white transition-shadow duration-300 select-none group
+                          ${isActive?`ring-2 ${ac.ring} ${ac.glow} border-transparent z-30`:''}
+                          ${!isActive?'border-gray-200 hover:border-gray-300 hover:shadow-md':''}
                           shadow-sm
+                          ${draggingNode === agent.key ? 'opacity-80 scale-105 z-50 cursor-grabbing' : 'cursor-grab scale-100'}
                         `}
-                        style={{left:agent.x,top:agent.y,width:NODE_W,height:NODE_H}}>
-                        <div className={`flex items-center justify-between px-3 pt-2.5 pb-1.5 rounded-t-2xl bg-gradient-to-b ${ac.h} to-transparent`}>
+                        style={{left:pos.x, top:pos.y, width:NODE_W, height:NODE_H, transitionProperty: 'box-shadow, transform'}}>
+                        <div className={`flex items-center justify-between px-3 pt-2.5 pb-1.5 rounded-t-2xl bg-gradient-to-b ${ac.h} to-transparent pointer-events-none`}>
                           <div className="flex items-center gap-2">
                             <span className={`text-sm w-6 h-6 flex items-center justify-center rounded-xl ${ac.ic}`}>{agent.icon}</span>
                             <span className="font-bold text-gray-900 text-xs">{agent.label}</span>
@@ -603,13 +658,13 @@ export default function Home() {
                           {isActive && <span className={`h-2 w-2 rounded-full animate-pulse ${ac.dot}`}/>}
                           {isDone && !isActive && <span className="text-emerald-500 text-[10px] font-bold">✓</span>}
                         </div>
-                        <div className="px-3 pb-2.5">
+                        <div className="px-3 pb-2.5 pointer-events-none">
                           <p className="text-[10px] text-gray-400 font-semibold truncate">{agent.role}</p>
                           {isActive && <div className="mt-1 h-0.5 w-full bg-gray-100 rounded-full overflow-hidden">
                             <div className={`h-full w-3/5 rounded-full ${ac.dot} opacity-70 animate-pulse`}/>
                           </div>}
                           {isDone && !isActive && <p className="text-[10px] text-emerald-500 font-bold mt-0.5">Done · click to read</p>}
-                          {!isActive && !isDone && <p className="text-[10px] text-gray-300 mt-0.5 group-hover:text-gray-400 transition-colors">Click to configure</p>}
+                          {!isActive && !isDone && <p className="text-[10px] text-gray-300 mt-0.5 group-hover:text-gray-400 transition-colors">Drag or click</p>}
                         </div>
                       </div>
                     );
