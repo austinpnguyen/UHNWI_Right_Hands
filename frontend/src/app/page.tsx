@@ -28,7 +28,7 @@ const TOGETHER_MODELS = [
 
 // ─── All 16 agents ──────────────────────────────────────────────────────────
 const AGENTS = [
-  { key:'CEO',         label:'CEO',              role:'Master Plan',          icon:'♟️', color:'blue',    div:'company',      x:825,  y:40,   desc: "Reads the Founder's instruction file and formulates the Master Plan, delegating specialized strategies to the C-Suite." },
+  { key:'CEO',         label:'CEO',              role:'Master Plan',          icon:'♟️', color:'blue',    div:'company',      x:825,  y:40,   desc: "Reads instructions, formulates the Master Plan, delegates to C-Suite, and finally condenses all outputs into the Final Executive Report." },
   
   // C-SUITE ROW
   { key:'CPO',         label:'CPO',              role:'Architecture',         icon:'🛠️', color:'indigo',  div:'company',      x:100,  y:180,  desc: "Designs the core product architecture and operational logistics based on the CEO's Master Plan." },
@@ -516,6 +516,7 @@ export default function Home() {
   const [instructionModalOpen, setInstructionModalOpen] = useState(false);
   const [finalReport, setFinalReport] = useState<{fileName:string, content:string}|null>(null);
   const [finalReportModalOpen, setFinalReportModalOpen] = useState(false);
+  const [dismissedTip, setDismissedTip] = useState<string|null>(null);
   
   // Draggable nodes state
   const [positions, setPositions] = useState<Record<string, {x:number, y:number}>>(
@@ -625,8 +626,20 @@ export default function Home() {
   const modalDef = modalAgent ? agentMap[modalAgent] : null;
   const agentLogs = modalAgent ? logs.filter(l=>l.agent===modalAgent||l.agent==='System') : [];
 
+  let contextualTip = null;
+  if (!activeInstruction) {
+    contextualTip = "Select or write a new Instruction to begin building the Master Plan.";
+  } else if (pipelineState === 'idle') {
+    contextualTip = "Click the 'Launch' button in the top bar to run the system. The CEO will read your instruction and orchestrate the C-Suite.";
+  } else if (pipelineState === 'running') {
+    contextualTip = "The pipeline is live. Watch the Live Activity sidebar on the right to monitor the agents.";
+  } else if (pipelineState === 'done' && finalReport) {
+    contextualTip = "Execution complete! Click 'View Final Report' in the top bar to read the CEO's definitive verdict.";
+  }
+  const showTip = contextualTip && dismissedTip !== contextualTip;
+
   return (
-    <div className="min-h-screen bg-[#f5f5f7] font-sans relative overflow-x-hidden">
+    <div className="min-h-screen bg-[#f5f5f7] font-sans overflow-hidden">
       {modalDef && (
         <AgentModal agent={modalDef} onClose={()=>setModalAgent(null)}
           agentStream={agentStreams[modalDef.key]}
@@ -655,228 +668,186 @@ export default function Home() {
       <div className="fixed top-[-10%] right-[-10%] w-[500px] h-[500px] bg-purple-200 rounded-full mix-blend-multiply filter blur-[120px] opacity-35 animate-blob animation-delay-2000 pointer-events-none z-0"/>
       <div className="fixed bottom-[-10%] left-[25%] w-[600px] h-[600px] bg-pink-100  rounded-full mix-blend-multiply filter blur-[150px] opacity-25 animate-blob animation-delay-4000 pointer-events-none z-0"/>
 
-      <div className="relative z-10 max-w-screen-2xl mx-auto px-6 py-8 flex flex-col gap-6">
-
-        {/* ── Command Bar ── */}
-        <header className="bg-white/85 backdrop-blur-2xl border border-white/60 shadow-sm rounded-3xl px-6 py-4">
-          <div className="flex items-center gap-4 flex-wrap">
-
-            {/* Brand */}
-            <div className="flex-shrink-0">
-              <h1 className="text-lg font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-violet-500 to-pink-500 leading-none">Dynasty OS</h1>
-              <p className="text-[9px] font-bold text-gray-400 tracking-widest uppercase mt-0.5">V11 · 16 agents</p>
-            </div>
-
-            <div className="w-px h-8 bg-gray-200 flex-shrink-0 hidden xl:block"/>
-
-            {/* Phase Progress */}
-            <div className="flex-1 min-w-0">
-              {pipelineState==='idle' && (
-                <p className="text-xs text-gray-400 font-medium">Ready — select a instruction and launch.</p>
-              )}
-              {pipelineState==='running' && pipelinePhase && (
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1.5">
-                    {Array.from({length:pipelinePhase.total},(_,i)=>(
-                      <div key={i} className={`h-1.5 w-12 rounded-full transition-all ${
-                        i<pipelinePhase.phase ? 'bg-blue-500' : i===pipelinePhase.phase-1 ? 'bg-blue-400 animate-pulse' : 'bg-gray-200'
-                      }`}/>
-                    ))}
-                  </div>
-                  <span className="text-xs font-semibold text-gray-600 truncate">{pipelinePhase.label}</span>
-                  {/* Active agent pills */}
-                  <div className="flex gap-1 flex-wrap">
-                    {[...activeAgents].map(k=>{
-                      const a=agentMap[k]; const ac=C[a?.color||'blue'];
-                      return <span key={k} className={`text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse ${ac.badge}`}>{k}</span>;
-                    })}
-                  </div>
-                </div>
-              )}
-              {pipelineState==='done' && (
-                <div className="flex items-center gap-2">
-                  <span className="text-emerald-500 font-bold text-sm">✓</span>
-                  <span className="text-xs font-semibold text-gray-600">{reportCount} reports filed · {completedAgents.size} agents complete</span>
-                  <span className="text-[10px] text-gray-400">· Click any node to read output</span>
-                </div>
-              )}
-              {pipelineState==='stopped' && (
-                <div className="flex items-center gap-2">
-                  <span className="text-amber-500 font-bold text-sm">⛔</span>
-                  <span className="text-xs font-semibold text-amber-600">Pipeline stopped · {completedAgents.size} agents completed before stop</span>
-                </div>
-              )}
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex items-center gap-3 flex-shrink-0 ml-auto">
-              
-              {/* Type in instruction */}
-              <button onClick={()=>setInstructionModalOpen(true)}
-                className="px-4 py-2 bg-gray-50 border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 text-indigo-600 rounded-xl text-xs font-bold transition-all flex items-center gap-2">
-                ✏️ Type Instruction
-              </button>
-
-              <div className="w-px h-6 bg-gray-200 flex-shrink-0 hidden xl:block"/>
-
-              {/* Instruction Selector + Upload */}
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <div className="relative">
-                  <select value={activeInstruction} onChange={e=>setActiveInstruction(e.target.value)}
-                    className="bg-white border border-gray-200 text-gray-700 rounded-xl pl-3 pr-7 py-2 text-[11px] font-bold outline-none focus:ring-2 focus:ring-blue-300 appearance-none shadow-sm max-w-[160px] truncate">
-                    {instructions.length>0?instructions.map((m,i)=><option key={i}>{m}</option>):<option>No instructions</option>}
-                  </select>
-                  <span className="absolute inset-y-0 right-2 flex items-center text-gray-400 pointer-events-none text-[10px]">▾</span>
-                </div>
-                <label className={`cursor-pointer px-3 py-2 rounded-xl border border-gray-200 text-[11px] font-bold text-gray-500 hover:border-blue-300 hover:text-blue-500 transition-colors bg-white shadow-sm ${uploading?'opacity-50':''}`}>
-                  <input type="file" accept=".md,.txt" className="hidden" onChange={handleUpload} disabled={uploading}/>
-                  {uploading?'⏳':'📎'}
-                </label>
-              </div>
-
-              {pipelineState==='running' && (
-                <button onClick={stopPipeline}
-                  className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-500 border border-red-200 rounded-xl text-xs font-bold transition-all shadow-sm">
-                  ⛔ Stop
-                </button>
-              )}
-              <button onClick={launchPipeline}
-                disabled={!isConnected||pipelineState==='running'||!activeInstruction}
-                className="px-6 py-2 bg-gradient-to-r from-blue-500 to-violet-600 hover:from-blue-600 hover:to-violet-700 text-white rounded-xl shadow-[0_4px_12px_rgba(99,102,241,0.3)] disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:-translate-y-0.5 font-bold text-xs flex items-center gap-2">
-                {pipelineState==='running' ? <span className="animate-spin">⟳</span> : '▶'}
-                {pipelineState==='done'||pipelineState==='stopped' ? 'Run Again' : 'Launch'}
-              </button>
-
-              {finalReport && pipelineState==='done' && (
-                <button onClick={()=>setFinalReportModalOpen(true)}
-                  className="px-5 py-2 bg-emerald-50 border border-emerald-200 hover:border-emerald-300 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-sm animate-in fade-in slide-in-from-right-4 relative group">
-                  <span className="absolute -top-1 -right-1 flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"/><span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"/></span>
-                  📄 View Final Report
-                </button>
-              )}
-              
-              {/* Connection dot */}
-              <div className="flex items-center gap-1.5 bg-white/90 px-3 py-2 rounded-xl border border-gray-100 shadow-sm ml-2">
+      {/* ── Top Navigation Bar ── */}
+      <nav className="fixed top-0 left-0 right-0 h-16 border-b border-gray-200 bg-white/90 backdrop-blur-md z-50 shadow-sm px-6 flex items-center justify-between">
+         {/* Brand */}
+         <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-600 to-blue-600 shadow-inner flex items-center justify-center text-white font-bold text-lg">U</div>
+            <h1 className="text-xl font-black bg-clip-text text-transparent bg-gradient-to-r from-gray-900 via-slate-800 to-gray-900 tracking-tight">UHNWI+ idea checker</h1>
+            <div className="flex items-center gap-1.5 bg-white/90 px-2 py-1 rounded-md border border-gray-100 shadow-sm ml-4">
                 <span className="relative flex h-1.5 w-1.5">
                   {isConnected && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"/>}
                   <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${isConnected?'bg-green-500':'bg-red-400'}`}/>
                 </span>
-                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest hidden xl:block">{isConnected?'Live':'Offline'}</span>
-              </div>
+                <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest hidden xl:block">{isConnected?'Live':'Offline'}</span>
             </div>
-          </div>
-        </header>
+         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+         {/* Controls */}
+         <div className="flex items-center gap-4">
+             {/* Phase Progress */}
+             <div className="mr-4 hidden xl:block">
+               {pipelineState==='idle' && <p className="text-xs text-gray-400 font-medium">Ready — select an instruction and launch.</p>}
+               {pipelineState==='running' && pipelinePhase && (
+                 <div className="flex items-center gap-3">
+                   <span className="text-xs font-semibold text-gray-600">{pipelinePhase.label}</span>
+                   <div className="flex items-center gap-1">
+                     {Array.from({length:pipelinePhase.total},(_,i)=>(
+                       <div key={i} className={`h-1.5 w-6 rounded-full transition-all ${i<pipelinePhase.phase ? 'bg-blue-500' : i===pipelinePhase.phase-1 ? 'bg-blue-400 animate-pulse' : 'bg-gray-200'}`}/>
+                     ))}
+                   </div>
+                 </div>
+               )}
+               {pipelineState==='done' && <span className="text-emerald-500 font-bold text-xs flex items-center gap-2">✓ {reportCount} reports filed</span>}
+             </div>
 
-          {/* Sidebar */}
-          <div className="xl:col-span-3 flex flex-col gap-5">
+             <div className="w-px h-6 bg-gray-200 flex-shrink-0 hidden xl:block"/>
 
-            <div className="bg-white/80 backdrop-blur-2xl border border-white/60 shadow-sm rounded-3xl p-5 flex flex-col gap-3">
-              <div className="flex justify-between items-center">
-                <h2 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">📡 Live Activity</h2>
-                <button onClick={()=>navigator.clipboard.writeText(logs.map(l=>`[${l.agent}] ${l.msg}`).join('\n'))}
-                  className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-white border border-gray-200 text-gray-400 hover:text-blue-500 hover:border-blue-300 transition-colors shadow-sm">
-                  COPY
-                </button>
-              </div>
-              <div ref={logsRef} className="overflow-y-auto bg-gray-50 rounded-2xl border border-gray-100 p-3 font-mono text-[11px] space-y-1.5 shadow-inner max-h-[300px]">
-                {logs.map((l,i)=>(
-                  <div key={i} className={`leading-relaxed ${/error/i.test(l.agent)?'text-red-500':'text-gray-500'}`}>
-                    <span className="font-bold text-blue-500">[{l.agent}]</span> {l.msg}
+             <button onClick={()=>setInstructionModalOpen(true)}
+               className="px-4 py-2 bg-gray-50 border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 text-indigo-600 rounded-xl text-xs font-bold transition-all shadow-sm">
+               ✏️ Type Instruction
+             </button>
+
+             <div className="flex items-center gap-2 flex-shrink-0">
+               <div className="relative">
+                 <select value={activeInstruction} onChange={e=>setActiveInstruction(e.target.value)}
+                   className="bg-white border border-gray-200 text-gray-700 rounded-xl pl-3 pr-7 py-2 text-[11px] font-bold outline-none focus:ring-2 focus:ring-blue-300 appearance-none shadow-sm max-w-[160px] truncate">
+                   {instructions.length>0?instructions.map((m,i)=><option key={i}>{m}</option>):<option>No instructions</option>}
+                 </select>
+                 <span className="absolute inset-y-0 right-2 flex items-center text-gray-400 pointer-events-none text-[10px]">▾</span>
+               </div>
+               <label className={`cursor-pointer px-3 py-2 rounded-xl border border-gray-200 text-[11px] font-bold text-gray-500 hover:border-blue-300 transition-colors bg-white shadow-sm ${uploading?'opacity-50':''}`}>
+                 <input type="file" accept=".md,.txt" className="hidden" onChange={handleUpload} disabled={uploading}/>
+                 {uploading?'⏳':'📎'}
+               </label>
+             </div>
+
+             {pipelineState==='running' && (
+               <button onClick={stopPipeline} className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-500 border border-red-200 rounded-xl text-xs font-bold shadow-sm">⛔ Stop</button>
+             )}
+             
+             <button onClick={launchPipeline} disabled={!isConnected||pipelineState==='running'||!activeInstruction}
+               className="px-6 py-2 bg-gradient-to-r from-blue-500 to-violet-600 hover:from-blue-600 text-white rounded-xl shadow-md disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold flex items-center gap-2 transition-all">
+               {pipelineState==='running' ? <span className="animate-spin">⟳</span> : '▶'}
+               {pipelineState==='done'||pipelineState==='stopped' ? 'Run Again' : 'Launch'}
+             </button>
+
+             {finalReport && pipelineState==='done' && (
+               <button onClick={()=>setFinalReportModalOpen(true)} className="px-5 py-2 bg-emerald-50 border border-emerald-200 hover:border-emerald-300 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm animate-in fade-in slide-in-from-right-4 relative group">
+                 <span className="absolute -top-1 -right-1 flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"/><span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"/></span>
+                 📄 View Final Report
+               </button>
+             )}
+         </div>
+      </nav>
+
+      {/* ── Right Sidebar (Live Activity Logs) ── */}
+      <aside className="fixed top-16 right-0 bottom-0 w-80 bg-white/90 backdrop-blur-2xl border-l border-white/60 shadow-xl flex flex-col z-40">
+        <div className="h-14 border-b border-gray-100 flex items-center justify-between px-5 bg-gray-50/50">
+          <h2 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+            Live Activity
+          </h2>
+          <button onClick={()=>navigator.clipboard.writeText(logs.map(l=>`[${l.agent}] ${l.msg}`).join('\n'))}
+            className="text-[9px] font-bold px-2 py-1 rounded-full bg-white border border-gray-200 text-gray-400 hover:text-blue-500 hover:border-blue-300 transition-colors shadow-sm">
+            COPY
+          </button>
+        </div>
+        <div ref={logsRef} className="flex-1 overflow-y-auto p-4 custom-scrollbar font-mono text-[11px] space-y-2">
+          {logs.map((l,i)=>(
+            <div key={i} className={`leading-relaxed pb-2 border-b border-gray-50 ${/error/i.test(l.agent)?'text-red-500':'text-gray-500'}`}>
+              <span className="font-bold text-blue-500">[{l.agent}]</span> {l.msg}
+            </div>
+          ))}
+          {logs.length===0 && <div className="text-gray-400 text-center py-6 text-[11px] italic">No active logs.</div>}
+        </div>
+      </aside>
+
+      {/* ── Main Canvas ── */}
+      <main className="fixed top-16 left-0 right-80 bottom-0 overflow-auto bg-transparent relative custom-scrollbar p-10"
+            onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerLeave={handlePointerUp}>
+        <div className="relative mx-auto my-10" style={{width:CANVAS_W, minHeight:CANVAS_H}}>
+          <svg width={CANVAS_W} height={CANVAS_H} className="absolute top-0 left-0 pointer-events-none z-10 overflow-visible">
+            <defs>
+              <marker id="arrow-default" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#E5E7EB" />
+              </marker>
+              {Object.entries(C).map(([colorName, cVals]) => (
+                <marker key={`arrow-${colorName}`} id={`arrow-${colorName}`} viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill={cVals.edge} />
+                </marker>
+              ))}
+            </defs>
+            <style>{`@keyframes dash{to{stroke-dashoffset:-24}}`}</style>
+            {EDGES.map(e=>{
+              const to=agentMap[e.to];
+              const ec=C[to.color];
+              const isActive=activeAgents.has(e.to), isDone=completedAgents.has(e.to);
+              const isHighlighted = isActive || isDone;
+              return <path key={`${e.from}-${e.to}`} d={bezier(e.from, e.to)} fill="none"
+                stroke={isHighlighted ? ec.edge : '#E5E7EB'}
+                strokeWidth={isActive ? 2.5 : 1.5} strokeLinecap="round"
+                strokeDasharray={isActive ? "8 4" : undefined}
+                markerEnd={`url(#arrow-${isHighlighted ? to.color : 'default'})`}
+                style={isActive ? {animation:'dash 0.6s linear infinite'} : {}}/>;
+            })}
+          </svg>
+
+          <div className="relative z-20" style={{width:CANVAS_W,height:CANVAS_H}}>
+            {AGENTS.map(agent=>{
+              const ac=C[agent.color];
+              const isActive=activeAgents.has(agent.key), isDone=completedAgents.has(agent.key);
+              const pos = positions[agent.key];
+              if (!pos) return null;
+              return (
+                <div key={agent.key}
+                  onPointerDown={(e) => handlePointerDown(e, agent.key)}
+                  onClick={(e)=> {
+                    const dist = Math.hypot(e.clientX - dragOrigin.current.x, e.clientY - dragOrigin.current.y);
+                    if (dist < 5) setModalAgent(agent.key);
+                  }}
+                  title="Drag to move, click to configure"
+                  className={`absolute cursor-pointer rounded-2xl border bg-white/90 backdrop-blur-sm transition-shadow duration-300 select-none group
+                    ${isActive?`ring-2 ${ac.ring} ${ac.glow} border-transparent z-30`:''}
+                    ${!isActive?'border-gray-200 hover:border-gray-300 hover:shadow-md':''}
+                    shadow-sm
+                    ${draggingNode === agent.key ? 'opacity-80 scale-105 z-50 cursor-grabbing' : 'cursor-grab scale-100'}
+                  `}
+                  style={{left:pos.x, top:pos.y, width:NODE_W, height:NODE_H, transitionProperty: 'box-shadow, transform'}}>
+                  <div className={`flex items-center justify-between px-3 pt-2.5 pb-1.5 rounded-t-2xl bg-gradient-to-b ${ac.h} to-transparent pointer-events-none`}>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-sm w-6 h-6 flex items-center justify-center rounded-xl ${ac.ic}`}>{agent.icon}</span>
+                      <span className="font-bold text-gray-900 text-xs">{agent.label}</span>
+                    </div>
+                    {isActive && <span className={`h-2 w-2 rounded-full animate-pulse ${ac.dot}`}/>}
+                    {isDone && !isActive && <span className="text-emerald-500 text-[10px] font-bold">✓</span>}
                   </div>
-                ))}
-                {logs.length===0&&<div className="text-gray-400 text-center py-4 text-[11px]">Idle.</div>}
-              </div>
-            </div>
-
-            <div className="bg-white/80 backdrop-blur-2xl border border-white/60 shadow-sm rounded-3xl p-5">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">💡 Tip</p>
-              <p className="text-xs text-gray-500 leading-relaxed">Click any agent node to edit its model, system prompt, view output, and logs.</p>
-            </div>
-          </div>
-
-          {/* Canvas */}
-          <div className="xl:col-span-9">
-            <div className="bg-white/80 backdrop-blur-2xl border border-white/60 shadow-sm rounded-3xl overflow-hidden relative">
-              <div className="absolute inset-0 opacity-25" style={{backgroundImage:'radial-gradient(circle, #d1d5db 1px, transparent 1px)',backgroundSize:'28px 28px'}}/>
-
-              <div className="relative overflow-auto p-6" style={{minHeight:CANVAS_H+48}}
-                   onPointerMove={handlePointerMove}
-                   onPointerUp={handlePointerUp}
-                   onPointerLeave={handlePointerUp}>
-                <svg width={CANVAS_W} height={CANVAS_H} className="absolute top-6 left-6 pointer-events-none z-10 overflow-visible">
-                  <defs>
-                    <marker id="arrow-default" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                      <path d="M 0 0 L 10 5 L 0 10 z" fill="#E5E7EB" />
-                    </marker>
-                    {Object.entries(C).map(([colorName, cVals]) => (
-                      <marker key={`arrow-${colorName}`} id={`arrow-${colorName}`} viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                        <path d="M 0 0 L 10 5 L 0 10 z" fill={cVals.edge} />
-                      </marker>
-                    ))}
-                  </defs>
-                  <style>{`@keyframes dash{to{stroke-dashoffset:-24}}`}</style>
-                  {EDGES.map(e=>{
-                    const to=agentMap[e.to];
-                    const ec=C[to.color];
-                    const isActive=activeAgents.has(e.to), isDone=completedAgents.has(e.to);
-                    const isHighlighted = isActive || isDone;
-                    return <path key={`${e.from}-${e.to}`} d={bezier(e.from, e.to)} fill="none"
-                      stroke={isHighlighted ? ec.edge : '#E5E7EB'}
-                      strokeWidth={isActive ? 2.5 : 1.5} strokeLinecap="round"
-                      strokeDasharray={isActive ? "8 4" : undefined}
-                      markerEnd={`url(#arrow-${isHighlighted ? to.color : 'default'})`}
-                      style={isActive ? {animation:'dash 0.6s linear infinite'} : {}}/>;
-                  })}
-                </svg>
-
-                <div className="relative z-20" style={{width:CANVAS_W,height:CANVAS_H}}>
-                  {AGENTS.map(agent=>{
-                    const ac=C[agent.color];
-                    const isActive=activeAgents.has(agent.key), isDone=completedAgents.has(agent.key);
-                    const pos = positions[agent.key];
-                    if (!pos) return null;
-                    return (
-                      <div key={agent.key}
-                        onPointerDown={(e) => handlePointerDown(e, agent.key)}
-                        onClick={(e)=> {
-                          const dist = Math.hypot(e.clientX - dragOrigin.current.x, e.clientY - dragOrigin.current.y);
-                          if (dist < 5) setModalAgent(agent.key);
-                        }}
-                        title="Drag to move, click to configure"
-                        className={`absolute cursor-pointer rounded-2xl border bg-white transition-shadow duration-300 select-none group
-                          ${isActive?`ring-2 ${ac.ring} ${ac.glow} border-transparent z-30`:''}
-                          ${!isActive?'border-gray-200 hover:border-gray-300 hover:shadow-md':''}
-                          shadow-sm
-                          ${draggingNode === agent.key ? 'opacity-80 scale-105 z-50 cursor-grabbing' : 'cursor-grab scale-100'}
-                        `}
-                        style={{left:pos.x, top:pos.y, width:NODE_W, height:NODE_H, transitionProperty: 'box-shadow, transform'}}>
-                        <div className={`flex items-center justify-between px-3 pt-2.5 pb-1.5 rounded-t-2xl bg-gradient-to-b ${ac.h} to-transparent pointer-events-none`}>
-                          <div className="flex items-center gap-2">
-                            <span className={`text-sm w-6 h-6 flex items-center justify-center rounded-xl ${ac.ic}`}>{agent.icon}</span>
-                            <span className="font-bold text-gray-900 text-xs">{agent.label}</span>
-                          </div>
-                          {isActive && <span className={`h-2 w-2 rounded-full animate-pulse ${ac.dot}`}/>}
-                          {isDone && !isActive && <span className="text-emerald-500 text-[10px] font-bold">✓</span>}
-                        </div>
-                        <div className="px-3 pb-2.5 pointer-events-none">
-                          <p className="text-[10px] text-gray-400 font-semibold truncate">{agent.role}</p>
-                          {isActive && <div className="mt-1 h-0.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                            <div className={`h-full w-3/5 rounded-full ${ac.dot} opacity-70 animate-pulse`}/>
-                          </div>}
-                          {isDone && !isActive && <p className="text-[10px] text-emerald-500 font-bold mt-0.5">Done · click to read</p>}
-                          {!isActive && !isDone && <p className="text-[10px] text-gray-300 mt-0.5 group-hover:text-gray-400 transition-colors">Drag or click</p>}
-                        </div>
-                      </div>
-                    );
-                  })}
+                  <div className="px-3 pb-2.5 pointer-events-none">
+                    <p className="text-[10px] text-gray-400 font-semibold truncate">{agent.role}</p>
+                    {isActive && <div className="mt-1 h-0.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                      <div className={`h-full w-3/5 rounded-full ${ac.dot} opacity-70 animate-pulse`}/>
+                    </div>}
+                    {isDone && !isActive && <p className="text-[10px] text-emerald-500 font-bold mt-0.5">Done · click to read</p>}
+                    {!isActive && !isDone && <p className="text-[10px] text-gray-300 mt-0.5 group-hover:text-gray-400 transition-colors">Drag or click</p>}
+                  </div>
                 </div>
-              </div>
-            </div>
+              );
+            })}
           </div>
         </div>
-      </div>
+      </main>
+
+      {/* ── Contextual Tips System ── */}
+      {showTip && (
+         <div className="fixed bottom-8 left-8 z-50 bg-white border border-gray-200 shadow-xl rounded-2xl p-4 flex items-start gap-4 max-w-sm animate-in fade-in slide-in-from-bottom-4">
+             <span className="text-2xl drop-shadow-sm">💡</span>
+             <div className="flex-1 mt-0.5">
+                 <h4 className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest mb-1.5">System Tip</h4>
+                 <p className="text-xs text-gray-600 leading-relaxed font-medium">{contextualTip}</p>
+             </div>
+             <button onClick={()=>setDismissedTip(contextualTip)} className="text-gray-400 hover:text-gray-900 transition-colors w-6 h-6 flex items-center justify-center rounded-full hover:bg-gray-100">✕</button>
+         </div>
+      )}
     </div>
   );
 }
