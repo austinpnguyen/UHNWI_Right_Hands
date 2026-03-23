@@ -27,7 +27,7 @@ const TOGETHER_MODELS = [
 ];
 
 // ─── All 16 agents ──────────────────────────────────────────────────────────
-const AGENTS = [
+export const INITIAL_AGENTS = [
   { key:'CEO',         label:'CEO',              role:'Master Plan',          icon:'♟️', color:'blue',    div:'company',      x:825,  y:40,   desc: "Reads instructions, formulates the Master Plan, delegates to C-Suite, and finally condenses all outputs into the Final Executive Report." },
   
   // C-SUITE ROW
@@ -56,7 +56,7 @@ const AGENTS = [
   { key:'WHISPERER',   label:'The Whisperer',    role:'Intelligence & Recon', icon:'👁️', color:'purple',  div:'inner_circle', x:1650, y:480,  desc: "Reviews the operational framework for intelligence vulnerabilities and operational security." },
 ];
 
-const EDGES = [
+export const INITIAL_EDGES = [
   { from:'CEO',to:'CPO'},{ from:'CEO',to:'CFO'},{ from:'CEO',to:'CMO'},{ from:'CEO',to:'COO'},
   { from:'CPO',to:'CIO'},{ from:'CFO',to:'AUDITOR'},{ from:'CFO',to:'CLO'},
   { from:'CMO',to:'MKT_ANALYST'},{ from:'CMO',to:'COMPETITOR'},{ from:'CMO',to:'TARGET_BUYER'},{ from:'CMO',to:'UNAWARE'},
@@ -79,11 +79,10 @@ const C: Record<string,any> = {
   gray:    { ring:'ring-gray-400',    glow:'shadow-[0_0_20px_rgba(156,163,175,0.5)]',   dot:'bg-gray-500',    badge:'bg-gray-100 text-gray-700',     h:'from-gray-50',    ic:'bg-gray-100 text-gray-600',    edge:'#9CA3AF' },
 };
 
-const ALL_KEYS = AGENTS.map(a=>a.key);
-const agentMap = Object.fromEntries(AGENTS.map(a=>[a.key,a]));
+const ALL_COLORS = Object.keys(C);
 
 // ─── Agent Config Modal ──────────────────────────────────────────────────────
-function AgentModal({ agent, onClose, agentStream, agentLogs, activeAgents, completedAgents }: any) {
+function AgentModal({ agent, edges, onClose, agentStream, agentLogs, activeAgents, completedAgents }: any) {
   const [tab, setTab]           = useState<'info'|'output'|'logs'>('info');
   const [configMode, setConfigMode] = useState<'model'|'prompt'|null>(null);
   const [selectedModel, setSelectedModel] = useState('');
@@ -93,12 +92,12 @@ function AgentModal({ agent, onClose, agentStream, agentLogs, activeAgents, comp
   const [saveMsg, setSaveMsg]   = useState('');
   const outputRef = useRef<HTMLDivElement>(null);
 
-  const c = C[agent.color];
+  const c = C[agent.color] || C.gray;
   const isActive = activeAgents.has(agent.key);
   const isDone   = completedAgents.has(agent.key);
 
-  const receivesFrom = EDGES.filter(e => e.to === agent.key).map(e => e.from);
-  const outputsTo    = EDGES.filter(e => e.from === agent.key).map(e => e.to);
+  const receivesFrom = edges.filter((e:any) => e.to === agent.key).map((e:any) => e.from);
+  const outputsTo    = edges.filter((e:any) => e.from === agent.key).map((e:any) => e.to);
 
   // Load config when modal opens
   useEffect(() => {
@@ -220,7 +219,7 @@ function AgentModal({ agent, onClose, agentStream, agentLogs, activeAgents, comp
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">📥 Receives Input From</p>
                     <div className="flex gap-1.5 flex-wrap">
                       {receivesFrom.length > 0 
-                        ? receivesFrom.map(k => <span key={k} className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-1 rounded-lg shadow-sm">{k}</span>) 
+                        ? receivesFrom.map((k: string) => <span key={k} className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-1 rounded-lg shadow-sm">{k}</span>) 
                         : <span className="text-xs font-medium text-gray-500 bg-white border border-gray-200 px-2.5 py-1 rounded-lg">Founder (Instruction)</span>}
                     </div>
                   </div>
@@ -228,7 +227,7 @@ function AgentModal({ agent, onClose, agentStream, agentLogs, activeAgents, comp
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">📤 Passes Output To</p>
                     <div className="flex gap-1.5 flex-wrap">
                       {outputsTo.length > 0 
-                        ? outputsTo.map(k => <span key={k} className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-1 rounded-lg shadow-sm">{k}</span>) 
+                        ? outputsTo.map((k: string) => <span key={k} className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-1 rounded-lg shadow-sm">{k}</span>) 
                         : <span className="text-xs font-medium text-gray-500 bg-white border border-gray-200 px-2.5 py-1 rounded-lg">None (Final Output)</span>}
                     </div>
                   </div>
@@ -500,19 +499,50 @@ function FinalReportModal({ report, onClose }: { report: {fileName:string, conte
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function Home() {
-  const [logs, setLogs]             = useState<{agent:string,msg:string}[]>([]);
-  const [instructions, setInstructions]     = useState<string[]>([]);
+  const [agents, setAgents] = useState<any[]>(INITIAL_AGENTS);
+  const [edges, setEdges] = useState<any[]>(INITIAL_EDGES);
+
+  const agentMap = Object.fromEntries(agents.map(a=>[a.key,a]));
+  const ALL_KEYS = agents.map(a=>a.key);
+  
+  const [expandedDivs, setExpandedDivs] = useState<Record<string,boolean>>({ company: true, inner_circle: true, shield: true, market: true });
+  const [removeCandidate, setRemoveCandidate] = useState<any>(null);
+  const [addModalDiv, setAddModalDiv] = useState<string|null>(null);
+  const [newAgentForm, setNewAgentForm] = useState({ key:(Date.now()%1000).toString(), label:'', role:'', icon:'🤖', color:'gray' });
+
+  const handleHireEmployee = () => {
+    if(!newAgentForm.key || !newAgentForm.label) return;
+    const newAgent = { ...newAgentForm, div: addModalDiv, x: 825, y: Math.random()*200+300, desc: "Newly hired." };
+    setAgents(p => [...p, newAgent]);
+    setPositions(p => ({...p, [newAgent.key]: {x: newAgent.x, y: newAgent.y}}));
+    setAddModalDiv(null);
+    setNewAgentForm({ key:(Date.now()%1000).toString(), label:'', role:'', icon:'🤖', color:'gray' });
+  };
+
+  const handleFireEmployee = () => {
+    if(!removeCandidate) return;
+    setAgents(p => p.filter(a => a.key !== removeCandidate.key));
+    setEdges(p => p.filter(e => e.from !== removeCandidate.key && e.to !== removeCandidate.key));
+    setRemoveCandidate(null);
+  };
+
+  const [socket, setSocket] = useState<any>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  
+  const [instructions, setInstructions] = useState<string[]>([]);
   const [activeInstruction, setActiveInstruction] = useState('');
-  const [isConnected, setIsConnected]     = useState(false);
-  const [socket, setSocket]               = useState<any>(null);
+  
+  const [pipelineState, setPipelineState] = useState<'idle'|'running'|'done'|'stopped'>('idle');
+  const [pipelinePhase, setPipelinePhase] = useState<{phase:number, total:number, label:string}|null>(null);
   const [activeAgents, setActiveAgents]   = useState<Set<string>>(new Set());
   const [completedAgents, setCompletedAgents] = useState<Set<string>>(new Set());
-  const [agentStreams, setAgentStreams]   = useState<Record<string,string>>(Object.fromEntries(ALL_KEYS.map(k=>[k,''])));
-  const [modalAgent, setModalAgent]       = useState<string|null>(null);
-  const [uploading, setUploading]         = useState(false);
-  const [pipelinePhase, setPipelinePhase] = useState<{phase:number,total:number,label:string}|null>(null);
-  const [reportCount, setReportCount]     = useState(0);
-  const [pipelineState, setPipelineState] = useState<'idle'|'running'|'done'|'stopped'>('idle');
+  const [agentStreams, setAgentStreams]   = useState<Record<string,string>>({});
+  
+  const [logs, setLogs] = useState<{agent:string, msg:string}[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [reportCount, setReportCount] = useState(0);
+
+  const [modalAgent, setModalAgent] = useState<string|null>(null);
   const [instructionModalOpen, setInstructionModalOpen] = useState(false);
   const [finalReport, setFinalReport] = useState<{fileName:string, content:string}|null>(null);
   const [finalReportModalOpen, setFinalReportModalOpen] = useState(false);
@@ -523,7 +553,7 @@ export default function Home() {
   
   // Draggable nodes state
   const [positions, setPositions] = useState<Record<string, {x:number, y:number}>>(
-    Object.fromEntries(AGENTS.map(a => [a.key, { x: a.x, y: a.y }]))
+    Object.fromEntries(INITIAL_AGENTS.map(a => [a.key, { x: a.x, y: a.y }]))
   );
   const [draggingNode, setDraggingNode] = useState<string|null>(null);
   const [dragOffset, setDragOffset] = useState({x:0, y:0});
@@ -562,13 +592,13 @@ export default function Home() {
     return ()=>{ s.close(); };
   },[]);
 
-  const launchPipeline = ()=>{
-    if(!socket||!activeInstruction) return;
+  const launchPipeline = () => {
+    if(!socket || !activeInstruction) return; // Re-added socket check for safety
     setFinalReport(null);
     setCompletedAgents(new Set()); setActiveAgents(new Set());
-    setAgentStreams(Object.fromEntries(ALL_KEYS.map(k=>[k,'']))); setLogs([]);
+    setAgentStreams(Object.fromEntries(ALL_KEYS.map((k: string)=>[k,'']))); setLogs([]);
     setPipelinePhase(null); setPipelineState('running'); setReportCount(0);
-    socket.emit('trigger_pipeline',{phase:'csuite',instruction:activeInstruction});
+    socket.emit('trigger_pipeline',{instruction:activeInstruction, activeAgentKeys: agents.map(a=>a.key)});
   };
 
   const stopPipeline = ()=>{
@@ -627,7 +657,7 @@ export default function Home() {
   };
 
   const modalDef = modalAgent ? agentMap[modalAgent] : null;
-  const agentLogs = modalAgent ? logs.filter(l=>l.agent===modalAgent||l.agent==='System') : [];
+  const agentLogs = modalAgent ? logs.filter(l=>l.agent===modalAgent) : [];
 
   let contextualTip = null;
   if (!activeInstruction) {
@@ -645,11 +675,68 @@ export default function Home() {
     <div className="min-h-screen bg-[#f5f5f7] font-sans overflow-hidden">
       {modalDef && (
         <AgentModal agent={modalDef} onClose={()=>setModalAgent(null)}
-          agentStream={agentStreams[modalDef.key]}
+          edges={edges}
+          agentStream={agentStreams[modalDef.key] || ''}
           agentLogs={agentLogs}
           activeAgents={activeAgents}
           completedAgents={completedAgents}
         />
+      )}
+
+      {/* ── Hire Executive Modal ── */}
+      {addModalDiv && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-200" onPointerDown={e=>e.stopPropagation()}>
+          <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 p-8 max-w-sm w-full animate-in zoom-in-95 duration-200">
+            <h3 className="text-xl font-black text-gray-900 mb-1">Hire New Executive</h3>
+            <p className="text-xs text-gray-500 mb-6">Assigning to division: <span className="font-bold text-indigo-600 uppercase">{addModalDiv.replace('_', ' ')}</span></p>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1.5">Agent Key (ID)</label>
+                <input type="text" value={newAgentForm.key} onChange={e=>setNewAgentForm(p=>({...p, key:e.target.value}))} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g. CTO" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1.5">Full Label / Name</label>
+                <input type="text" value={newAgentForm.label} onChange={e=>setNewAgentForm(p=>({...p, label:e.target.value}))} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g. Chief Tech Officer" />
+              </div>
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1.5">Role / Focus</label>
+                  <input type="text" value={newAgentForm.role} onChange={e=>setNewAgentForm(p=>({...p, role:e.target.value}))} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g. Server Scaling" />
+                </div>
+                <div className="w-16">
+                  <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1.5">Icon</label>
+                  <input type="text" value={newAgentForm.icon} onChange={e=>setNewAgentForm(p=>({...p, icon:e.target.value}))} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-2 py-2.5 text-center text-lg font-bold text-gray-900 focus:ring-2 focus:ring-indigo-500 outline-none" />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-8">
+              <button onClick={()=>setAddModalDiv(null)} className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold rounded-xl text-xs transition-colors">Cancel</button>
+              <button onClick={handleHireEmployee} disabled={!newAgentForm.key || !newAgentForm.label} className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs transition-colors shadow-lg disabled:opacity-50">Hire Employee</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Terminate Employee Modal ── */}
+      {removeCandidate && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-red-900/30 backdrop-blur-sm animate-in fade-in duration-200" onPointerDown={e=>e.stopPropagation()}>
+          <div className="bg-white rounded-3xl shadow-2xl border border-red-100 p-8 max-w-sm w-full animate-in zoom-in-95 duration-200 text-center">
+            <div className={`mx-auto w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mb-4 ${C[removeCandidate.color]?.ic || C.gray.ic}`}>
+              {removeCandidate.icon}
+            </div>
+            <h3 className="text-xl font-black text-gray-900 mb-2">Terminate {removeCandidate.label}?</h3>
+            <p className="text-sm text-gray-500 leading-relaxed mb-8">
+              Are you sure you want to fire <span className="font-bold text-gray-800">{removeCandidate.key}</span> from the <span className="uppercase font-bold text-gray-800">{removeCandidate.div.replace('_', ' ')}</span> division? This will instantly sever all intelligence links and remove them from the canvas.
+            </p>
+            
+            <div className="flex gap-3">
+              <button onClick={()=>setRemoveCandidate(null)} className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold rounded-xl text-xs transition-colors">Cancel</button>
+              <button onClick={handleFireEmployee} className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl text-xs transition-colors shadow-lg shadow-red-500/30">Yes, Fire Them</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {instructionModalOpen && (
@@ -770,32 +857,46 @@ export default function Home() {
             🏛️ Hierarchy
           </h2>
         </div>
-        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-4">
           {['company', 'inner_circle', 'shield', 'market'].map(divKey => {
-            const divAgents = AGENTS.filter(a => a.div === divKey);
+            const divAgents = agents.filter(a => a.div === divKey);
             const divNames = { company:'C-Suite', inner_circle:'Inner Circle', shield:'The Shield', market:'The Market' };
+            const isExpanded = expandedDivs[divKey];
             return (
               <div key={divKey}>
-                <h3 className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2 border-b border-gray-100 pb-1">{divNames[divKey as keyof typeof divNames]}</h3>
-                <div className="space-y-1">
-                  {divAgents.map(a => {
-                    const isActive = activeAgents.has(a.key);
-                    const isDone = completedAgents.has(a.key);
-                    return (
-                      <div key={a.key} onClick={()=>setModalAgent(a.key)} className="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors group">
-                        <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10px] ${C[a.color].ic}`}>{a.icon}</div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-bold text-gray-900 flex items-center gap-1">
-                            {a.key} 
-                            {isActive && <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"/>}
-                            {isDone && !isActive && <span className="text-emerald-500 text-[9px]">✓</span>}
-                          </p>
-                          <p className="text-[9px] text-gray-400 truncate group-hover:text-gray-600">{a.role}</p>
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="flex items-center justify-between group cursor-pointer mb-1 border-b border-gray-100 pb-1" onClick={() => setExpandedDivs(p => ({...p, [divKey]: !p[divKey]}))}>
+                   <h3 className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{divNames[divKey as keyof typeof divNames]}</h3>
+                   <div className="flex items-center gap-1">
+                     <button onClick={(e) => { e.stopPropagation(); setAddModalDiv(divKey); }} className="text-gray-400 hover:text-blue-500 hover:bg-white rounded px-2 text-lg leading-none transition-colors">+</button>
+                     <span className="text-gray-300 text-[10px] w-4 text-center">{isExpanded ? '▼' : '▶'}</span>
+                   </div>
                 </div>
+                {isExpanded && (
+                  <div className="mt-2 ml-2 border-l border-gray-200 pl-3 space-y-1">
+                    {divAgents.length === 0 && <span className="text-[10px] text-gray-400 italic">No personnel.</span>}
+                    {divAgents.map(a => {
+                      const isActive = activeAgents.has(a.key);
+                      const isDone = completedAgents.has(a.key);
+                      return (
+                        <div key={a.key} className="relative group flex items-center p-1.5 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer" onClick={()=>setModalAgent(a.key)}>
+                          <div className="absolute -left-3 top-1/2 w-3 border-t border-gray-200" />
+                          <div className={`w-6 h-6 rounded-md flex items-center justify-center text-[11px] ${C[a.color]?.ic||C.gray.ic} mr-2`}>{a.icon}</div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-gray-900 flex items-center gap-1">
+                              {a.key} 
+                              {isActive && <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"/>}
+                              {isDone && !isActive && <span className="text-emerald-500 text-[9px]">✓</span>}
+                            </p>
+                            <p className="text-[9px] text-gray-400 truncate mt-0.5">{a.role}</p>
+                          </div>
+                          <button onClick={(e)=>{ e.stopPropagation(); setRemoveCandidate(a); }} className="opacity-0 group-hover:opacity-100 text-red-300 hover:text-red-500 hover:bg-red-50 px-2 py-0.5 rounded text-[10px] transition-all font-bold ml-1">
+                            FIRE
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -841,12 +942,13 @@ export default function Home() {
               ))}
             </defs>
             <style>{`@keyframes dash{to{stroke-dashoffset:-24}}`}</style>
-            {EDGES.map(e=>{
+            {edges.map((e, idx)=>{
               const to=agentMap[e.to];
-              const ec=C[to.color];
+              if(!to) return null;
+              const ec=C[to.color] || C.gray;
               const isActive=activeAgents.has(e.to), isDone=completedAgents.has(e.to);
               const isHighlighted = isActive || isDone;
-              return <path key={`${e.from}-${e.to}`} d={bezier(e.from, e.to)} fill="none"
+              return <path key={`${e.from}-${e.to}-${idx}`} d={bezier(e.from, e.to)} fill="none"
                 stroke={isHighlighted ? ec.edge : '#E5E7EB'}
                 strokeWidth={isActive ? 2.5 : 1.5} strokeLinecap="round"
                 strokeDasharray={isActive ? "8 4" : undefined}
@@ -856,8 +958,8 @@ export default function Home() {
           </svg>
 
           <div className="relative z-20" style={{width:CANVAS_W,height:CANVAS_H}}>
-            {AGENTS.map(agent=>{
-              const ac=C[agent.color];
+            {agents.map(agent=>{
+              const ac=C[agent.color] || C.gray;
               const isActive=activeAgents.has(agent.key), isDone=completedAgents.has(agent.key);
               const pos = positions[agent.key];
               if (!pos) return null;

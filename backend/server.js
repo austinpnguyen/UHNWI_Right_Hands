@@ -127,18 +127,23 @@ function stripFrontmatter(text) {
 }
 
 // Stream one agent — filters <think> tokens and respects socket.cancelled flag
-async function runAgent({ socket, agentKey, userMessage, outputPath }) {
+async function runAgent({ socket, agentKey, userMessage, outputPath, fallbackSystem }) {
     const config     = loadConfig();
     const model      = config[agentKey]?.model || DEFAULT_MODEL;
     const promptPath = AGENT_PROMPT_MAP[agentKey];
 
-    if (!promptPath || !fs.existsSync(path.join(__dirname, promptPath))) {
+    let systemPrompt = "";
+    if (promptPath && fs.existsSync(path.join(__dirname, promptPath))) {
+        systemPrompt = stripFrontmatter(fs.readFileSync(path.join(__dirname, promptPath), 'utf8'));
+    } else if (fallbackSystem) {
+        systemPrompt = fallbackSystem;
+    } else {
         socket.emit('agent_log', { agent: agentKey, msg: `No prompt file for ${agentKey}, skipping.` });
         return '';
     }
+
     if (socket.cancelled) throw new Error('STOPPED');
 
-    const systemPrompt = stripFrontmatter(fs.readFileSync(path.join(__dirname, promptPath), 'utf8'));
     socket.emit('agent_log',    { agent: agentKey, msg: `[${agentKey}] Starting on ${model}...` });
     socket.emit('agent_active', { agent: agentKey, active: true });
     const GUARDRAIL = `IMPORTANT: The user requires you to wrap ALL your internal monologues, reasoning, thoughts, and planning explicitly inside <think>...</think> tags. Only your final, beautifully formatted markdown executive report should be placed outside these tags.\n---\n\n`;
@@ -222,6 +227,9 @@ io.on('connection', (socket) => {
     socket.on('trigger_pipeline', async (data) => {
         if (!data.instruction) return;
         socket.cancelled = false;
+        
+        const activeKeys = data.activeAgentKeys || ['CEO', 'CPO', 'CFO', 'CMO', 'COO', 'CIO', 'AUDITOR', 'CLO', 'MKT_ANALYST', 'COMPETITOR', 'TARGET_BUYER', 'UNAWARE', 'COS', 'CISO', 'FIXER', 'WHISPERER'];
+        
         const instructionContent = fs.readFileSync(path.join(INPUT_DIR, data.instruction), 'utf8');
         const outDir = path.join(__dirname, '../company_files/thoughts', data.instruction.replace(/\.(md|txt)$/, ''));
         const now = new Date();
@@ -233,53 +241,69 @@ io.on('connection', (socket) => {
 
         socket.emit('pipeline_phase', { phase: 1, total: 3, label: 'Phase 1 — CEO: Master Plan' });
 
+        const safeRun = async (agentKey, userMessage, fallbackSystem = null) => {
+            if (!activeKeys.includes(agentKey)) {
+                socket.emit('agent_log', { agent: 'System', msg: `[SKIPPED] ${agentKey} is terminated/inactive.` });
+                socket.emit('agent_active', { agent: agentKey, active: false });
+                socket.emit('agent_stream', { agent: agentKey, chunk: `*This department has been terminated or is currently inactive. No intelligence provided.*` });
+                return `[TERMINATED BY FOUNDER]`;
+            }
+            return await runAgent({ socket, agentKey, userMessage, outputPath: path.join(outDir, `${agentKey}_${hrTag}.md`), fallbackSystem });
+        };
+
         try {
-            const ceoPlan = await runAgent({
-                socket, agentKey: 'CEO',
-                userMessage: `EXECUTE YOUR ROLE. Synthesize a Master Plan V1 from the Founder's Instruction below.\n\nINSTRUCTION:\n${instructionContent}`,
-                outputPath: path.join(outDir, `CEO_${hrTag}.md`)
-            });
+            const ceoPlan = await safeRun('CEO', `EXECUTE YOUR ROLE. Synthesize a Master Plan V1 from the Founder's Instruction below.\n\nINSTRUCTION:\n${instructionContent}`);
 
             socket.emit('agent_log',    { agent: 'System', msg: 'CEO complete. Dispatching C-Suite (Phase 2) in parallel...' });
             socket.emit('pipeline_phase', { phase: 2, total: 3, label: 'Phase 2 — C-Suite: Strategy Formulation' });
 
             const sharedCtx = `INSTRUCTION:\n${instructionContent}\n\nCEO MASTER PLAN:\n${ceoPlan}`;
             const [cpoArch, cfoFin, cmoGtm, cooOps] = await Promise.all([
-                runAgent({ socket, agentKey: 'CPO', userMessage: `EXECUTE YOUR ROLE. Design the full product architecture.\n\n${sharedCtx}`, outputPath: path.join(outDir, `CPO_${hrTag}.md`) }),
-                runAgent({ socket, agentKey: 'CFO', userMessage: `EXECUTE YOUR ROLE. Produce a brutal financial constraint model.\n\n${sharedCtx}`, outputPath: path.join(outDir, `CFO_${hrTag}.md`) }),
-                runAgent({ socket, agentKey: 'CMO', userMessage: `EXECUTE YOUR ROLE. Design the complete go-to-market and brand strategy.\n\n${sharedCtx}`, outputPath: path.join(outDir, `CMO_${hrTag}.md`) }),
-                runAgent({ socket, agentKey: 'COO', userMessage: `EXECUTE YOUR ROLE. Map out the full operational execution framework.\n\n${sharedCtx}`, outputPath: path.join(outDir, `COO_${hrTag}.md`) }),
+                safeRun('CPO', `EXECUTE YOUR ROLE. Design the full product architecture.\n\n${sharedCtx}`),
+                safeRun('CFO', `EXECUTE YOUR ROLE. Produce a brutal financial constraint model.\n\n${sharedCtx}`),
+                safeRun('CMO', `EXECUTE YOUR ROLE. Design the complete go-to-market and brand strategy.\n\n${sharedCtx}`),
+                safeRun('COO', `EXECUTE YOUR ROLE. Map out the full operational execution framework.\n\n${sharedCtx}`),
             ]);
 
             socket.emit('agent_log',    { agent: 'System', msg: 'C-Suite complete. Dispatching specialized divisions (Phase 3)...' });
             socket.emit('pipeline_phase', { phase: 3, total: 4, label: 'Phase 3 — Specialized Divisions: Execution & Validation' });
 
+            const HARDCODED_PHASE_3 = ['CIO', 'AUDITOR', 'CLO', 'MKT_ANALYST', 'COMPETITOR', 'TARGET_BUYER', 'UNAWARE', 'COS', 'CISO', 'FIXER', 'WHISPERER'];
+            const customPhase3 = activeKeys.filter(k => !HARDCODED_PHASE_3.includes(k) && !['CEO', 'CPO', 'CFO', 'CMO', 'COO'].includes(k));
+
             // Phase 3: Specialized execution branches based on C-Suite outputs
-            const phase3Outputs = await Promise.all([
-                // CPO Branch
-                runAgent({ socket, agentKey: 'CIO',          userMessage: `EXECUTE YOUR ROLE. Review the CPO Architecture and define the Tech Infrastructure.\n\nCPO ARCHITECTURE:\n${cpoArch}`, outputPath: path.join(outDir, `CIO_${hrTag}.md`) }),
-                
-                // CFO Branch
-                runAgent({ socket, agentKey: 'AUDITOR',      userMessage: `EXECUTE YOUR ROLE. Validate and aggressively stress-test the CFO's Financial Model.\n\nCFO FINANCIAL MODEL:\n${cfoFin}`, outputPath: path.join(outDir, `AUDITOR_${hrTag}.md`) }),
-                runAgent({ socket, agentKey: 'CLO',          userMessage: `EXECUTE YOUR ROLE. Review the CFO Financials for legal and compliance risks.\n\nCFO FINANCIAL MODEL:\n${cfoFin}`, outputPath: path.join(outDir, `CLO_${hrTag}.md`) }),
-                
-                // CMO Branch
-                runAgent({ socket, agentKey: 'MKT_ANALYST',  userMessage: `EXECUTE YOUR ROLE. Analyze the CMO's GTM Strategy for market viability.\n\nCMO GTM STRATEGY:\n${cmoGtm}`, outputPath: path.join(outDir, `MKT_ANALYST_${hrTag}.md`) }),
-                runAgent({ socket, agentKey: 'COMPETITOR',   userMessage: `EXECUTE YOUR ROLE. Act as the Competitor Simulator to destroy the CMO's GTM Strategy.\n\nCMO GTM STRATEGY:\n${cmoGtm}`, outputPath: path.join(outDir, `COMPETITOR_${hrTag}.md`) }),
-                runAgent({ socket, agentKey: 'TARGET_BUYER', userMessage: `EXECUTE YOUR ROLE. Act as the Target Buyer evaluating the CMO's GTM Strategy.\n\nCMO GTM STRATEGY:\n${cmoGtm}`, outputPath: path.join(outDir, `TARGET_BUYER_${hrTag}.md`) }),
-                runAgent({ socket, agentKey: 'UNAWARE',      userMessage: `EXECUTE YOUR ROLE. Evaluate the CMO's GTM Strategy from the perspective of an unaware layperson.\n\nCMO GTM STRATEGY:\n${cmoGtm}`, outputPath: path.join(outDir, `UNAWARE_${hrTag}.md`) }),
-                
-                // COO Branch
-                runAgent({ socket, agentKey: 'COS',          userMessage: `EXECUTE YOUR ROLE. Review the COO's Ops Framework and output an executive coordination schedule.\n\nCOO OPS FRAMEWORK:\n${cooOps}`, outputPath: path.join(outDir, `COS_${hrTag}.md`) }),
-                runAgent({ socket, agentKey: 'CISO',         userMessage: `EXECUTE YOUR ROLE. Review the COO's Ops Framework for security vulnerabilities.\n\nCOO OPS FRAMEWORK:\n${cooOps}`, outputPath: path.join(outDir, `CISO_${hrTag}.md`) }),
-                runAgent({ socket, agentKey: 'FIXER',        userMessage: `EXECUTE YOUR ROLE. Identify crisis points in the COO's Ops Framework and plan resolutions.\n\nCOO OPS FRAMEWORK:\n${cooOps}`, outputPath: path.join(outDir, `FIXER_${hrTag}.md`) }),
-                runAgent({ socket, agentKey: 'WHISPERER',    userMessage: `EXECUTE YOUR ROLE. Review the COO's Ops Framework for intelligence vulnerabilities.\n\nCOO OPS FRAMEWORK:\n${cooOps}`, outputPath: path.join(outDir, `WHISPERER_${hrTag}.md`) }),
-            ]);
+            const phase3Promises = [
+                safeRun('CIO',          `EXECUTE YOUR ROLE. Review the CPO Architecture and define the Tech Infrastructure.\n\nCPO ARCHITECTURE:\n${cpoArch}`),
+                safeRun('AUDITOR',      `EXECUTE YOUR ROLE. Validate and aggressively stress-test the CFO's Financial Model.\n\nCFO FINANCIAL MODEL:\n${cfoFin}`),
+                safeRun('CLO',          `EXECUTE YOUR ROLE. Review the CFO Financials for legal and compliance risks.\n\nCFO FINANCIAL MODEL:\n${cfoFin}`),
+                safeRun('MKT_ANALYST',  `EXECUTE YOUR ROLE. Analyze the CMO's GTM Strategy for market viability.\n\nCMO GTM STRATEGY:\n${cmoGtm}`),
+                safeRun('COMPETITOR',   `EXECUTE YOUR ROLE. Act as the Competitor Simulator to destroy the CMO's GTM Strategy.\n\nCMO GTM STRATEGY:\n${cmoGtm}`),
+                safeRun('TARGET_BUYER', `EXECUTE YOUR ROLE. Act as the Target Buyer evaluating the CMO's GTM Strategy.\n\nCMO GTM STRATEGY:\n${cmoGtm}`),
+                safeRun('UNAWARE',      `EXECUTE YOUR ROLE. Evaluate the CMO's GTM Strategy from the perspective of an unaware layperson.\n\nCMO GTM STRATEGY:\n${cmoGtm}`),
+                safeRun('COS',          `EXECUTE YOUR ROLE. Review the COO's Ops Framework and output an executive coordination schedule.\n\nCOO OPS FRAMEWORK:\n${cooOps}`),
+                safeRun('CISO',         `EXECUTE YOUR ROLE. Review the COO's Ops Framework for security vulnerabilities.\n\nCOO OPS FRAMEWORK:\n${cooOps}`),
+                safeRun('FIXER',        `EXECUTE YOUR ROLE. Identify crisis points in the COO's Ops Framework and plan resolutions.\n\nCOO OPS FRAMEWORK:\n${cooOps}`),
+                safeRun('WHISPERER',    `EXECUTE YOUR ROLE. Review the COO's Ops Framework for intelligence vulnerabilities.\n\nCOO OPS FRAMEWORK:\n${cooOps}`),
+            ];
+
+            customPhase3.forEach(k => {
+                phase3Promises.push(safeRun(k, `EXECUTE YOUR ROLE as ${k}. Analyze the Founder's Instruction and CEO Master Plan to provide your specialized executive strategy.\n\n${sharedCtx}`, `You are ${k}, an elite executive. Write a highly analytical, ruthless strategic assessment. Format in beautiful markdown.`));
+            });
+
+            const phase3Outputs = await Promise.all(phase3Promises);
 
             socket.emit('agent_log', { agent: 'System', msg: 'Phase 3 complete. CEO is synthesizing Final Report (Phase 4)...' });
             socket.emit('pipeline_phase', { phase: 4, total: 4, label: 'Phase 4 — CEO: Final Synthesis' });
 
             const truncate = (str, len = 2000) => str && str.length > len ? str.slice(0, len) + "\n\n...[TRUNCATED FOR BREVITY]" : (str || "");
+
+            let customReportsCtx = '';
+            if (customPhase3.length > 0) {
+                customReportsCtx = `--- CUSTOM DIVISION REPORTS ---\n`;
+                customPhase3.forEach((key, idx) => {
+                    customReportsCtx += `${key}: ${truncate(phase3Outputs[HARDCODED_PHASE_3.length + idx], 2000)}\n\n`;
+                });
+            }
 
             const finalReportCtx = `
 INSTRUCTION:\n${truncate(instructionContent, 3000)}
@@ -304,6 +328,8 @@ COS: ${truncate(phase3Outputs[7], 2000)}
 CISO: ${truncate(phase3Outputs[8], 2000)}
 Fixer: ${truncate(phase3Outputs[9], 2000)}
 Whisperer: ${truncate(phase3Outputs[10], 2000)}
+
+${customReportsCtx}
 `;
 
             const finalReportFileName = `CEO_FINAL_REPORT_${hrTag}.md`;
