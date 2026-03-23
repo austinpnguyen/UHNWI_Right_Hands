@@ -41,19 +41,26 @@ const io = new Server(server, {
 const together = new Together({ apiKey: process.env.TOGETHER_API_KEY });
 const COMPANY_MODEL = "ServiceNow-AI/Apriel-1.6-15b-Thinker";
 
+// --- Helper: strip YAML frontmatter (--- ... ---) from agent .md files ---
+function stripFrontmatter(text) {
+    return text.replace(/^---[\s\S]*?---\s*/m, '').trim();
+}
+
 // --- Helper: stream a single agent's LLM call and write the result file ---
 async function runAgent({ socket, agentKey, systemPromptPath, userMessage, outputPath }) {
-    const systemPrompt = fs.readFileSync(systemPromptPath, 'utf8');
+    // Strip YAML frontmatter so the model doesn't read 'tools: Read, Glob...' as real capabilities
+    const rawPrompt    = fs.readFileSync(systemPromptPath, 'utf8');
+    const systemPrompt = stripFrontmatter(rawPrompt);
 
-    socket.emit('agent_log', { agent: agentKey, msg: `[${agentKey}] Starting via ${COMPANY_MODEL}...` });
+    socket.emit('agent_log',   { agent: agentKey, msg: `[${agentKey}] Starting via ${COMPANY_MODEL}...` });
     socket.emit('agent_active', { agent: agentKey, active: true });
 
-    // Prepend a strict guardrail to prevent the model from hallucinating tool calls.
-    // Some models interpret role descriptions as real tool availability — this blocks that.
+    // Guardrail: prevent the model from hallucinating tool calls.
+    // Apriel-Thinker reads role descriptions as real tool grants — this overrides that.
     const GUARDRAIL = `IMPORTANT: You do NOT have access to any tools, file systems, or external APIs.
 ALL context you need is provided directly in this message.
 Do NOT output any <tool_calls>, <function_call>, Glob, Read, or similar blocks.
-Generate your report NOW using only the text provided below.
+Generate your full written report NOW using only the text provided below.
 ---\n\n`;
 
     const runner = await together.chat.completions.create({
@@ -67,11 +74,39 @@ Generate your report NOW using only the text provided below.
         stream: true
     });
 
-    let output = "";
+    // Filter <think>...</think> reasoning tokens — Apriel-Thinker emits internal
+    // chain-of-thought inside these tags; we must strip them before sending to the UI.
+    let output    = "";
+    let inThink   = false;
+    let thinkBuf  = "";
+
     for await (const chunk of runner) {
         const token = chunk.choices[0]?.delta?.content || "";
-        output += token;
-        socket.emit('agent_stream', { agent: agentKey, chunk: token });
+        if (!token) continue;
+
+        thinkBuf += token;
+
+        // Flush the buffer token by token, toggling inThink state on tags
+        let flushed = "";
+        let buf = thinkBuf;
+        thinkBuf = "";
+
+        while (buf.length > 0) {
+            if (!inThink) {
+                const openIdx = buf.indexOf('<think>');
+                if (openIdx === -1) { flushed += buf; buf = ""; }
+                else { flushed += buf.slice(0, openIdx); buf = buf.slice(openIdx + 7); inThink = true; }
+            } else {
+                const closeIdx = buf.indexOf('</think>');
+                if (closeIdx === -1) { buf = ""; } // still inside think block, discard
+                else { buf = buf.slice(closeIdx + 8); inThink = false; }
+            }
+        }
+
+        if (flushed) {
+            output += flushed;
+            socket.emit('agent_stream', { agent: agentKey, chunk: flushed });
+        }
     }
 
     // Write result file

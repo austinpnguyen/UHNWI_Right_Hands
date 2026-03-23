@@ -4,37 +4,70 @@ import io from 'socket.io-client';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-// --- Agent definitions
+// All 16 agents positioned on the canvas
+// Layout: Company (top), Inner Circle (mid-left), Market (mid-right), Shield (bottom)
 const AGENTS = [
-  { key: 'CEO', label: 'CEO',        role: 'Master Plan Synthesizer', icon: '♟️', color: 'blue',    x: 460, y: 60  },
-  { key: 'CPO', label: 'CPO',        role: 'System Architecture',     icon: '🛠️', color: 'indigo',  x: 60,  y: 280 },
-  { key: 'CFO', label: 'CFO',        role: 'Financial Engineering',   icon: '📈', color: 'emerald', x: 310, y: 280 },
-  { key: 'CMO', label: 'CMO',        role: 'Brand Strategy',          icon: '📣', color: 'pink',    x: 560, y: 280 },
-  { key: 'COO', label: 'COO',        role: 'Operations',              icon: '⚙️', color: 'orange',  x: 810, y: 280 },
+  // --- COMPANY ---
+  { key: 'CEO',       label: 'CEO',              role: 'Master Plan',          icon: '♟️', color: 'blue',    div: 'company',      x: 460,  y: 30  },
+  { key: 'CPO',       label: 'CPO',              role: 'Architecture',         icon: '🛠️', color: 'indigo',  div: 'company',      x: 60,   y: 170 },
+  { key: 'CFO',       label: 'CFO',              role: 'Financials',           icon: '📈', color: 'emerald', div: 'company',      x: 280,  y: 170 },
+  { key: 'CMO',       label: 'CMO',              role: 'Brand Strategy',       icon: '📣', color: 'pink',    div: 'company',      x: 500,  y: 170 },
+  { key: 'COO',       label: 'COO',              role: 'Operations',           icon: '⚙️', color: 'orange',  div: 'company',      x: 720,  y: 170 },
+  // --- INNER CIRCLE ---
+  { key: 'COS',       label: 'Chief of Staff',   role: 'Exec Coordination',    icon: '📋', color: 'violet',  div: 'inner_circle', x: 60,   y: 350 },
+  { key: 'CIO',       label: 'CIO',              role: 'Tech Infrastructure',  icon: '💻', color: 'blue',    div: 'inner_circle', x: 260,  y: 350 },
+  { key: 'CISO',      label: 'CISO',             role: 'Security & Privacy',   icon: '🛡️', color: 'slate',   div: 'inner_circle', x: 460,  y: 350 },
+  { key: 'FIXER',     label: 'The Fixer',        role: 'Crisis Resolution',    icon: '🔧', color: 'amber',   div: 'inner_circle', x: 660,  y: 350 },
+  { key: 'WHISPERER', label: 'The Whisperer',    role: 'Intelligence & Recon', icon: '👁️', color: 'purple',  div: 'inner_circle', x: 860,  y: 350 },
+  // --- MARKET ---
+  { key: 'MKT_ANALYST',  label: 'Market Analyst',      role: 'Competitive Intel',   icon: '🔍', color: 'blue',    div: 'market', x: 60,   y: 530 },
+  { key: 'COMPETITOR',   label: 'Competitor Sim',      role: 'Adversarial Model',   icon: '⚔️', color: 'red',     div: 'market', x: 260,  y: 530 },
+  { key: 'TARGET_BUYER', label: 'Target Buyer',        role: 'Buyer Psychology',    icon: '🎯', color: 'emerald', div: 'market', x: 460,  y: 530 },
+  { key: 'UNAWARE',      label: 'Unaware Audience',    role: 'Cold Market Sim',     icon: '🌐', color: 'gray',    div: 'market', x: 660,  y: 530 },
+  // --- SHIELD ---
+  { key: 'AUDITOR', label: 'Auditor', role: 'Financial Compliance', icon: '📊', color: 'amber', div: 'shield', x: 260, y: 710 },
+  { key: 'CLO',     label: 'CLO',     role: 'Legal Strategy',       icon: '⚖️', color: 'slate', div: 'shield', x: 460, y: 710 },
 ];
 
-// Edges: CEO fans out to all C-Suite
+// Edges flowing down through the hierarchy
 const EDGES = [
-  { from: 'CEO', to: 'CPO' },
-  { from: 'CEO', to: 'CFO' },
-  { from: 'CEO', to: 'CMO' },
-  { from: 'CEO', to: 'COO' },
+  // CEO → C-Suite
+  { from: 'CEO', to: 'CPO' }, { from: 'CEO', to: 'CFO' },
+  { from: 'CEO', to: 'CMO' }, { from: 'CEO', to: 'COO' },
+  // C-Suite → Inner Circle
+  { from: 'CPO', to: 'CIO' }, { from: 'CFO', to: 'AUDITOR' }, { from: 'CFO', to: 'CLO' },
+  { from: 'CMO', to: 'MKT_ANALYST' }, { from: 'CMO', to: 'COMPETITOR' }, { from: 'CMO', to: 'TARGET_BUYER' }, { from: 'CMO', to: 'UNAWARE' },
+  { from: 'COO', to: 'COS' }, { from: 'COO', to: 'CISO' }, { from: 'COO', to: 'FIXER' }, { from: 'COO', to: 'WHISPERER' },
 ];
 
-const NODE_W = 200;
-const NODE_H = 90;
+const NODE_W = 190;
+const NODE_H = 85;
+const CANVAS_W = 1100;
+const CANVAS_H = 840;
 
-const COLORS: Record<string, {
-  ring: string; glow: string; dot: string; badge: string; header: string; icon: string; edge: string;
-}> = {
-  blue:    { ring:'ring-blue-400',    glow:'shadow-[0_0_20px_rgba(96,165,250,0.5)]',   dot:'bg-blue-500',    badge:'bg-blue-100 text-blue-700',    header:'from-blue-50',    icon:'bg-blue-100 text-blue-600',   edge:'#60A5FA' },
-  indigo:  { ring:'ring-indigo-400',  glow:'shadow-[0_0_20px_rgba(129,140,248,0.5)]',  dot:'bg-indigo-500',  badge:'bg-indigo-100 text-indigo-700', header:'from-indigo-50',  icon:'bg-indigo-100 text-indigo-600', edge:'#818CF8' },
-  emerald: { ring:'ring-emerald-400', glow:'shadow-[0_0_20px_rgba(52,211,153,0.5)]',   dot:'bg-emerald-500', badge:'bg-emerald-100 text-emerald-700',header:'from-emerald-50', icon:'bg-emerald-100 text-emerald-600', edge:'#34D399' },
-  pink:    { ring:'ring-pink-400',    glow:'shadow-[0_0_20px_rgba(244,114,182,0.5)]',  dot:'bg-pink-500',    badge:'bg-pink-100 text-pink-700',    header:'from-pink-50',    icon:'bg-pink-100 text-pink-600',   edge:'#F472B6' },
-  orange:  { ring:'ring-orange-400',  glow:'shadow-[0_0_20px_rgba(251,146,60,0.5)]',   dot:'bg-orange-500',  badge:'bg-orange-100 text-orange-700', header:'from-orange-50',  icon:'bg-orange-100 text-orange-600', edge:'#FB923C' },
+const DIV_LABELS: Record<string, { label: string; icon: string; color: string }> = {
+  company:      { label: 'COMPANY',      icon: '🏛️', color: 'text-blue-400' },
+  inner_circle: { label: 'INNER CIRCLE', icon: '🔐', color: 'text-violet-400' },
+  market:       { label: 'MARKET',       icon: '📡', color: 'text-pink-400' },
+  shield:       { label: 'SHIELD',       icon: '⚖️', color: 'text-amber-400' },
 };
 
-const ALL_KEYS = AGENTS.map(a => a.key);
+const COLORS: Record<string, { ring: string; glow: string; dot: string; badge: string; header: string; icon: string; edge: string }> = {
+  blue:    { ring:'ring-blue-400',    glow:'shadow-[0_0_20px_rgba(96,165,250,0.5)]',    dot:'bg-blue-500',    badge:'bg-blue-100 text-blue-700',     header:'from-blue-50',    icon:'bg-blue-100 text-blue-600',    edge:'#60A5FA' },
+  indigo:  { ring:'ring-indigo-400',  glow:'shadow-[0_0_20px_rgba(129,140,248,0.5)]',   dot:'bg-indigo-500',  badge:'bg-indigo-100 text-indigo-700',  header:'from-indigo-50',  icon:'bg-indigo-100 text-indigo-600', edge:'#818CF8' },
+  emerald: { ring:'ring-emerald-400', glow:'shadow-[0_0_20px_rgba(52,211,153,0.5)]',    dot:'bg-emerald-500', badge:'bg-emerald-100 text-emerald-700', header:'from-emerald-50', icon:'bg-emerald-100 text-emerald-600',edge:'#34D399' },
+  pink:    { ring:'ring-pink-400',    glow:'shadow-[0_0_20px_rgba(244,114,182,0.5)]',   dot:'bg-pink-500',    badge:'bg-pink-100 text-pink-700',     header:'from-pink-50',    icon:'bg-pink-100 text-pink-600',    edge:'#F472B6' },
+  orange:  { ring:'ring-orange-400',  glow:'shadow-[0_0_20px_rgba(251,146,60,0.5)]',    dot:'bg-orange-500',  badge:'bg-orange-100 text-orange-700',  header:'from-orange-50',  icon:'bg-orange-100 text-orange-600', edge:'#FB923C' },
+  violet:  { ring:'ring-violet-400',  glow:'shadow-[0_0_20px_rgba(167,139,250,0.5)]',   dot:'bg-violet-500',  badge:'bg-violet-100 text-violet-700',  header:'from-violet-50',  icon:'bg-violet-100 text-violet-600', edge:'#A78BFA' },
+  purple:  { ring:'ring-purple-400',  glow:'shadow-[0_0_20px_rgba(192,132,252,0.5)]',   dot:'bg-purple-500',  badge:'bg-purple-100 text-purple-700',  header:'from-purple-50',  icon:'bg-purple-100 text-purple-600', edge:'#C084FC' },
+  slate:   { ring:'ring-slate-400',   glow:'shadow-[0_0_20px_rgba(148,163,184,0.5)]',   dot:'bg-slate-500',   badge:'bg-slate-100 text-slate-700',    header:'from-slate-50',   icon:'bg-slate-100 text-slate-600',   edge:'#94A3B8' },
+  amber:   { ring:'ring-amber-400',   glow:'shadow-[0_0_20px_rgba(251,191,36,0.5)]',    dot:'bg-amber-500',   badge:'bg-amber-100 text-amber-700',    header:'from-amber-50',   icon:'bg-amber-100 text-amber-600',   edge:'#FBBF24' },
+  red:     { ring:'ring-red-400',     glow:'shadow-[0_0_20px_rgba(248,113,113,0.5)]',   dot:'bg-red-500',     badge:'bg-red-100 text-red-700',       header:'from-red-50',     icon:'bg-red-100 text-red-600',      edge:'#F87171' },
+  gray:    { ring:'ring-gray-400',    glow:'shadow-[0_0_20px_rgba(156,163,175,0.5)]',   dot:'bg-gray-500',    badge:'bg-gray-100 text-gray-700',     header:'from-gray-50',    icon:'bg-gray-100 text-gray-600',    edge:'#9CA3AF' },
+};
+
+const ALL_KEYS  = AGENTS.map(a => a.key);
+const agentMap  = Object.fromEntries(AGENTS.map(a => [a.key, a]));
 
 export default function Home() {
   const [logs, setLogs]             = useState<{agent:string,msg:string}[]>([]);
@@ -97,39 +130,32 @@ export default function Home() {
     setUploading(false); e.target.value='';
   };
 
-  // Canvas dimensions
-  const CANVAS_W = 1060;
-  const CANVAS_H = 420;
-
-  // Compute bezier path between two nodes (bottom-center of from, top-center of to)
+  // Bezier from bottom-center of `from` to top-center of `to`
   const bezierPath = (from: typeof AGENTS[0], to: typeof AGENTS[0]) => {
-    const x1 = from.x + NODE_W / 2;
-    const y1 = from.y + NODE_H;
-    const x2 = to.x + NODE_W / 2;
-    const y2 = to.y;
-    const cy = (y1 + y2) / 2;
+    const x1 = from.x + NODE_W / 2, y1 = from.y + NODE_H;
+    const x2 = to.x   + NODE_W / 2, y2 = to.y;
+    const cy  = (y1 + y2) / 2;
     return `M ${x1} ${y1} C ${x1} ${cy}, ${x2} ${cy}, ${x2} ${y2}`;
   };
 
-  const selectedDef  = AGENTS.find(a => a.key === selectedAgent);
+  const selectedDef = selectedAgent ? agentMap[selectedAgent] : null;
 
   return (
     <div className="min-h-screen bg-[#f5f5f7] font-sans relative overflow-x-hidden">
       {/* Ambient blobs */}
-      <div className="fixed top-[-15%] left-[-10%]  w-[600px] h-[600px] bg-blue-200   rounded-full mix-blend-multiply filter blur-[130px] opacity-40 animate-blob pointer-events-none z-0"/>
-      <div className="fixed top-[-10%] right-[-10%] w-[500px] h-[500px] bg-purple-200  rounded-full mix-blend-multiply filter blur-[120px] opacity-35 animate-blob animation-delay-2000 pointer-events-none z-0"/>
-      <div className="fixed bottom-[-10%] left-[20%] w-[600px] h-[600px] bg-pink-100  rounded-full mix-blend-multiply filter blur-[150px] opacity-25 animate-blob animation-delay-4000 pointer-events-none z-0"/>
+      <div className="fixed top-[-15%] left-[-10%]  w-[600px] h-[600px] bg-blue-200  rounded-full mix-blend-multiply filter blur-[130px] opacity-40 animate-blob pointer-events-none z-0"/>
+      <div className="fixed top-[-10%] right-[-10%] w-[500px] h-[500px] bg-purple-200 rounded-full mix-blend-multiply filter blur-[120px] opacity-35 animate-blob animation-delay-2000 pointer-events-none z-0"/>
+      <div className="fixed bottom-[-10%] left-[25%] w-[600px] h-[600px] bg-pink-100  rounded-full mix-blend-multiply filter blur-[150px] opacity-25 animate-blob animation-delay-4000 pointer-events-none z-0"/>
 
       <div className="relative z-10 max-w-screen-2xl mx-auto px-6 py-8 flex flex-col gap-6">
 
-        {/* ── Header ── */}
+        {/* Header */}
         <header className="bg-white/80 backdrop-blur-2xl border border-white/60 shadow-sm rounded-3xl px-8 py-4 flex items-center justify-between">
           <div>
             <h1 className="text-xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-violet-500 to-pink-500">Dynasty OS</h1>
-            <p className="text-[10px] font-bold text-gray-400 tracking-widest uppercase mt-0.5">Execution Canvas · V8</p>
+            <p className="text-[10px] font-bold text-gray-400 tracking-widest uppercase mt-0.5">Execution Canvas · V9 · 16 agents</p>
           </div>
-          <div className="flex items-center gap-4">
-            {/* Status */}
+          <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 bg-white/90 px-3 py-1.5 rounded-full border border-gray-100 shadow-sm">
               <span className="relative flex h-2 w-2">
                 {isConnected && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"/>}
@@ -137,8 +163,7 @@ export default function Home() {
               </span>
               <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{isConnected?'Live':'Offline'}</span>
             </div>
-            {/* Agents running badge */}
-            {activeAgents.size > 0 && (
+            {activeAgents.size>0 && (
               <div className="px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-full flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse"/>
                 <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest">{activeAgents.size} running</span>
@@ -147,14 +172,13 @@ export default function Home() {
           </div>
         </header>
 
-        {/* ── Main Layout ── */}
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
 
-          {/* LEFT: Controls ── */}
+          {/* Left Sidebar */}
           <div className="xl:col-span-3 flex flex-col gap-5">
 
             <div className="bg-white/80 backdrop-blur-2xl border border-white/60 shadow-sm rounded-3xl p-5 flex flex-col gap-4">
-              <h2 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2"><span>⚡</span>Control Center</h2>
+              <h2 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">⚡ Control Center</h2>
 
               <div>
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 block">Upload Mandate</label>
@@ -171,19 +195,19 @@ export default function Home() {
                     className="w-full bg-white border border-gray-200 text-gray-800 rounded-xl px-3 py-2.5 text-xs outline-none focus:ring-2 focus:ring-blue-300 appearance-none shadow-sm font-medium">
                     {mandates.length>0?mandates.map((m,i)=><option key={i}>{m}</option>):<option>No mandates found</option>}
                   </select>
-                  <span className="absolute inset-y-0 right-2 flex items-center text-gray-400 pointer-events-none text-xs">▾</span>
+                  <span className="absolute inset-y-0 right-2 flex items-center text-gray-400 pointer-events-none">▾</span>
                 </div>
               </div>
 
               <button onClick={launchPipeline}
                 disabled={!isConnected||activeAgents.size>0||!activeMandate}
                 className="w-full py-3.5 bg-gradient-to-r from-blue-500 to-violet-600 hover:from-blue-600 hover:to-violet-700 text-white rounded-2xl shadow-[0_8px_20px_rgba(99,102,241,0.25)] disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:-translate-y-0.5 font-bold text-xs tracking-wide flex justify-between items-center px-4 group">
-                {activeAgents.size>0?<span>{activeAgents.size} agent(s) thinking…</span>:<span>Launch Agent Chain</span>}
+                <span>{activeAgents.size>0?`${activeAgents.size} agents running…`:'Launch Agent Chain'}</span>
                 <span className="group-hover:translate-x-1 transition-transform">→</span>
               </button>
             </div>
 
-            {/* Live Activity */}
+            {/* Log panel */}
             <div className="bg-white/80 backdrop-blur-2xl border border-white/60 shadow-sm rounded-3xl p-5 flex flex-col gap-3">
               <div className="flex justify-between items-center">
                 <h2 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">📡 Live Activity</h2>
@@ -192,91 +216,110 @@ export default function Home() {
                   COPY
                 </button>
               </div>
-              <div ref={logsRef} className="overflow-y-auto bg-gray-50 rounded-2xl border border-gray-100 p-3 font-mono text-[11px] space-y-1.5 shadow-inner max-h-[280px]">
+              <div ref={logsRef} className="overflow-y-auto bg-gray-50 rounded-2xl border border-gray-100 p-3 font-mono text-[11px] space-y-1.5 shadow-inner max-h-[300px]">
                 {logs.map((l,i)=>(
                   <div key={i} className={`leading-relaxed ${/error/i.test(l.agent)?'text-red-500':'text-gray-500'}`}>
                     <span className="font-bold text-blue-500">[{l.agent}]</span> {l.msg}
                   </div>
                 ))}
-                {logs.length===0&&<div className="text-gray-400 text-center py-4">Idle.</div>}
+                {logs.length===0&&<div className="text-gray-400 text-center py-4 text-[11px]">Idle.</div>}
               </div>
             </div>
 
+            {/* Division legend */}
+            <div className="bg-white/80 backdrop-blur-2xl border border-white/60 shadow-sm rounded-3xl p-5">
+              <h2 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">🏢 Divisions</h2>
+              <div className="space-y-2">
+                {Object.entries(DIV_LABELS).map(([key, d])=>(
+                  <div key={key} className="flex items-center gap-2">
+                    <span>{d.icon}</span>
+                    <span className={`text-[10px] font-black uppercase tracking-widest ${d.color}`}>{d.label}</span>
+                    <span className="text-[10px] text-gray-400 ml-auto">
+                      {AGENTS.filter(a=>a.div===key).length} agents
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
 
-          {/* RIGHT: Canvas ── */}
+          {/* Right: Canvas + Output */}
           <div className="xl:col-span-9 flex flex-col gap-5">
 
-            {/* Node Canvas */}
+            {/* Canvas */}
             <div className="bg-white/80 backdrop-blur-2xl border border-white/60 shadow-sm rounded-3xl overflow-hidden relative">
-              {/* Subtle dot grid background */}
-              <div className="absolute inset-0 opacity-30" style={{backgroundImage:'radial-gradient(circle, #d1d5db 1px, transparent 1px)',backgroundSize:'28px 28px'}}/>
+              <div className="absolute inset-0 opacity-25" style={{backgroundImage:'radial-gradient(circle, #d1d5db 1px, transparent 1px)',backgroundSize:'28px 28px'}}/>
 
-              <div className="relative overflow-auto p-6">
-                <svg width={CANVAS_W} height={CANVAS_H} className="absolute top-0 left-0 pointer-events-none" style={{padding:'24px'}}>
+              {/* Division row labels */}
+              <div className="absolute top-0 left-0 w-full pointer-events-none z-20">
+                {[
+                  { label:'🏛️ COMPANY',      top: 28,  color:'#3B82F6' },
+                  { label:'🔐 INNER CIRCLE',  top: 205, color:'#7C3AED' },
+                  { label:'📡 MARKET',         top: 385, color:'#EC4899' },
+                  { label:'⚖️ SHIELD',         top: 566, color:'#D97706' },
+                ].map(row=>(
+                  <div key={row.label} className="absolute left-3 text-[9px] font-black uppercase tracking-widest opacity-40"
+                    style={{top:row.top, color:row.color}}>{row.label}</div>
+                ))}
+              </div>
+
+              <div className="relative overflow-auto p-6" style={{minHeight: CANVAS_H + 48}}>
+                <svg width={CANVAS_W} height={CANVAS_H} className="absolute top-6 left-6 pointer-events-none z-10">
+                  <style>{`@keyframes dash{to{stroke-dashoffset:-24}}`}</style>
                   {EDGES.map(edge=>{
-                    const from = AGENTS.find(a=>a.key===edge.from)!;
-                    const to   = AGENTS.find(a=>a.key===edge.to)!;
-                    const toColor = COLORS[AGENTS.find(a=>a.key===edge.to)!.color];
+                    const from = agentMap[edge.from], to = agentMap[edge.to];
+                    const c = COLORS[to.color];
                     const isActive = activeAgents.has(edge.to);
                     const isDone   = completedAgents.has(edge.to);
                     return (
-                      <g key={`${edge.from}-${edge.to}`}>
-                        {/* Base path */}
-                        <path d={bezierPath(from,to)} fill="none"
-                          stroke={isDone||isActive ? toColor.edge : '#e5e7eb'}
-                          strokeWidth={isActive?2.5:1.5}
-                          strokeDasharray={isActive?"8 4":"none"}
-                          strokeLinecap="round"
-                          style={isActive?{animation:'dashMove 0.8s linear infinite'}:{}}
-                        />
-                      </g>
+                      <path key={`${edge.from}-${edge.to}`}
+                        d={bezierPath(from, to)}
+                        fill="none"
+                        stroke={isActive||isDone ? c.edge : '#E5E7EB'}
+                        strokeWidth={isActive ? 2.5 : 1.5}
+                        strokeDasharray={isActive ? "8 4" : undefined}
+                        strokeLinecap="round"
+                        style={isActive ? {animation:'dash 0.6s linear infinite'} : {}}
+                      />
                     );
                   })}
-                  <style>{`@keyframes dashMove{to{stroke-dashoffset:-24}}`}</style>
                 </svg>
 
-                {/* Node Cards */}
-                <div className="relative" style={{width:CANVAS_W, height:CANVAS_H}}>
+                {/* Node cards */}
+                <div className="relative z-20" style={{width:CANVAS_W, height:CANVAS_H}}>
                   {AGENTS.map(agent=>{
-                    const c         = COLORS[agent.color];
-                    const isActive  = activeAgents.has(agent.key);
-                    const isDone    = completedAgents.has(agent.key);
-                    const isSelected= selectedAgent === agent.key;
+                    const c          = COLORS[agent.color];
+                    const isActive   = activeAgents.has(agent.key);
+                    const isDone     = completedAgents.has(agent.key);
+                    const isSelected = selectedAgent === agent.key;
+                    const hasOutput  = agentStreams[agent.key].length > 0;
                     return (
                       <div key={agent.key}
                         onClick={()=>setSelectedAgent(isSelected?null:agent.key)}
                         className={`absolute cursor-pointer rounded-2xl border bg-white transition-all duration-300 select-none
-                          ${isActive   ? `ring-2 ${c.ring} ${c.glow} border-transparent scale-105` : ''}
-                          ${isSelected ? `ring-2 ${c.ring} border-transparent` : 'border-gray-200 hover:border-gray-300 hover:shadow-md'}
-                          ${!isActive&&!isSelected ? 'shadow-sm' : ''}
+                          ${isActive   ? `ring-2 ${c.ring} ${c.glow} border-transparent scale-105 z-30` : ''}
+                          ${isSelected && !isActive ? `ring-2 ${c.ring} border-transparent z-30` : ''}
+                          ${!isActive  ? 'border-gray-200 hover:border-gray-300 hover:shadow-md' : ''}
+                          shadow-sm
                         `}
                         style={{left:agent.x, top:agent.y, width:NODE_W, height:NODE_H}}>
-
-                        {/* Card header */}
-                        <div className={`flex items-center justify-between px-4 pt-3 pb-2 rounded-t-2xl bg-gradient-to-b ${c.header} to-transparent`}>
+                        <div className={`flex items-center justify-between px-3 pt-2.5 pb-1.5 rounded-t-2xl bg-gradient-to-b ${c.header} to-transparent`}>
                           <div className="flex items-center gap-2">
-                            <span className={`text-base w-7 h-7 flex items-center justify-center rounded-xl ${c.icon}`}>{agent.icon}</span>
-                            <span className="font-bold text-gray-900 text-sm">{agent.label}</span>
+                            <span className={`text-sm w-6 h-6 flex items-center justify-center rounded-xl ${c.icon}`}>{agent.icon}</span>
+                            <span className="font-bold text-gray-900 text-xs">{agent.label}</span>
                           </div>
-                          {isActive  && <span className={`h-2.5 w-2.5 rounded-full animate-pulse ${c.dot}`}/>}
-                          {isDone && !isActive && <span className="text-emerald-500 text-xs font-bold">✓</span>}
+                          {isActive  && <span className={`h-2 w-2 rounded-full animate-pulse ${c.dot}`}/>}
+                          {isDone && !isActive && <span className="text-emerald-500 text-[10px] font-bold">✓</span>}
                         </div>
-
-                        {/* Card body */}
-                        <div className="px-4 pb-3">
-                          <p className="text-[10px] text-gray-400 font-semibold">{agent.role}</p>
+                        <div className="px-3 pb-2.5">
+                          <p className="text-[10px] text-gray-400 font-semibold truncate">{agent.role}</p>
                           {isActive && (
-                            <div className="mt-1.5 h-1 w-full bg-gray-100 rounded-full overflow-hidden">
-                              <div className={`h-full rounded-full ${c.dot} opacity-70`} style={{width:'60%', animation:'pulse 1s infinite'}}/>
+                            <div className="mt-1 h-0.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                              <div className={`h-full w-3/5 rounded-full ${c.dot} opacity-70 animate-pulse`}/>
                             </div>
                           )}
-                          {isDone && !isActive && (
-                            <p className="text-[10px] text-emerald-500 font-bold mt-1">Done · click to read</p>
-                          )}
-                          {!isActive && !isDone && (
-                            <p className="text-[10px] text-gray-300 mt-1">Idle</p>
-                          )}
+                          {isDone && !isActive && <p className="text-[10px] text-emerald-500 font-bold mt-0.5">Done · click to read</p>}
+                          {!isActive && !isDone && <p className="text-[10px] text-gray-300 mt-0.5">Idle</p>}
                         </div>
                       </div>
                     );
@@ -285,7 +328,7 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Output Panel — shows when a node is selected */}
+            {/* Output panel — appears when a node is clicked */}
             {selectedDef && (
               <div className={`bg-white/80 backdrop-blur-2xl border border-white/60 shadow-sm rounded-3xl overflow-hidden transition-all
                 ${activeAgents.has(selectedDef.key) ? `ring-2 ${COLORS[selectedDef.color].ring}` : ''}`}>
@@ -303,13 +346,13 @@ export default function Home() {
                         <span className={`h-1.5 w-1.5 rounded-full ${COLORS[selectedDef.color].dot}`}/>Thinking
                       </span>
                     )}
-                    <button onClick={()=>setSelectedAgent(null)} className="text-gray-400 hover:text-gray-600 text-lg leading-none">✕</button>
+                    <button onClick={()=>setSelectedAgent(null)} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
                   </div>
                 </div>
-                <div className="overflow-y-auto px-8 py-6 max-h-[60vh] prose prose-sm max-w-none text-gray-700 markdown-body bg-white/40">
+                <div className="overflow-y-auto px-8 py-6 max-h-[65vh] prose prose-sm max-w-none text-gray-700 markdown-body bg-white/40">
                   {agentStreams[selectedDef.key]
                     ? <ReactMarkdown remarkPlugins={[remarkGfm]}>{agentStreams[selectedDef.key]}</ReactMarkdown>
-                    : <p className="text-gray-400 italic">No output yet. Launch the Agent Chain first.</p>
+                    : <p className="text-gray-400 italic text-sm">This agent has not run in the current pipeline. Launch Agent Chain to activate the C-Suite pipeline.</p>
                   }
                   {activeAgents.has(selectedDef.key) && (
                     <span className={`inline-block w-2 h-4 ml-1 align-middle rounded-sm animate-pulse ${COLORS[selectedDef.color].dot}`}/>
