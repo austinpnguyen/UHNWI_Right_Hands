@@ -101,6 +101,21 @@ app.post('/upload', upload.single('mandate'), (req, res) => {
     res.json({ filename: req.file.originalname });
 });
 
+app.get('/mandate/:filename', (req, res) => {
+    const full = path.join(INPUT_DIR, req.params.filename);
+    if (!fs.existsSync(full)) return res.status(404).json({ error: 'Not found' });
+    res.json({ content: fs.readFileSync(full, 'utf8') });
+});
+
+app.post('/save-mandate', (req, res) => {
+    const { filename, content } = req.body;
+    if (!filename || typeof content !== 'string') return res.status(400).json({ error: 'Missing data' });
+    const safeName = filename.replace(/[^a-z0-9_.-]/gi, '_');
+    const finalName = safeName.endsWith('.md') ? safeName : safeName + '.md';
+    fs.writeFileSync(path.join(INPUT_DIR, finalName), content, 'utf8');
+    res.json({ filename: finalName });
+});
+
 // ─── WebSocket ────────────────────────────────────────────────────────────────
 const server = http.createServer(app);
 const io     = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } });

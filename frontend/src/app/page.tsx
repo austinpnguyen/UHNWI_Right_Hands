@@ -331,6 +331,103 @@ function AgentModal({ agent, onClose, agentStream, agentLogs, activeAgents, comp
   );
 }
 
+// ─── Mandate Editor Modal ────────────────────────────────────────────────────
+const MANDATE_TEMPLATES = {
+  t1: { title: "Aggressive Pivot", content: "MANDATE: The company is currently bleeding cash in the B2B SaaS space. We must immediately pivot to a B2C Fintech model. Burn rate must be cut by 50%. The CEO must outline a ruthless timeline for this transition. CPO needs to design a mobile-first consumer app. CMO needs to devise a viral marketing loop. CFO needs to model the exact runway required." },
+  t2: { title: "New Product Launch", content: "MANDATE: We are launching a proprietary 'AI Doctor Assistant' into the US healthcare market. The objective is to acquire 1,000 independent clinics within 6 months. CPO must ensure HIPAA compliance in architecture. CMO must build a GTM strategy targeting clinical administrators. CFO must model a pricing tier that accelerates adoption while maintaining 70%+ gross margins." },
+  t3: { title: "Operational Overhaul", content: "MANDATE: Revenue is stable but operational inefficiencies are destroying our profit margins. The mandate is to completely overhaul our supply chain and internal processes. COO must restructure the entire ops framework. CFO must identify the largest cost centers for trimming. CMO must manage public relations if we need to let people go. Zero impact on product quality is permitted." }
+};
+
+function MandateModal({ activeMandate, onClose, onSaved }: any) {
+  const [tab, setTab] = useState<'t1'|'t2'|'t3'|'custom'>(activeMandate ? 'custom' : 't1');
+  const [content, setContent] = useState('');
+  const [filename, setFilename] = useState(activeMandate || 'draft_mandate.md');
+  const [saving, setSaving] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (tab === 'custom' && activeMandate && !loaded) {
+      fetch(`http://localhost:8080/mandate/${activeMandate}`)
+        .then(r=>r.json()).then(d=>{ if(d.content) setContent(d.content); setLoaded(true); }).catch(()=>{});
+    } else if (tab !== 'custom') {
+      setContent(MANDATE_TEMPLATES[tab].content);
+      setFilename(`template_${tab}.md`);
+    }
+  }, [tab, activeMandate, loaded]);
+
+  const handleSave = async () => {
+    if (!filename.trim()) return;
+    setSaving(true);
+    try {
+      const res = await fetch('http://localhost:8080/save-mandate', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename, content })
+      });
+      const d = await res.json();
+      if (d.filename) {
+        onSaved(d.filename);
+        onClose();
+      }
+    } catch {}
+    setSaving(false);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-6" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-md"/>
+      <div className="relative bg-white/95 backdrop-blur-2xl rounded-3xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col border border-white/60 overflow-hidden" onClick={e=>e.stopPropagation()}>
+        {/* Header */}
+        <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50">
+          <div className="flex flex-col">
+            <h2 className="text-xl font-black text-gray-900 tracking-tight">Mandate Editor</h2>
+            <p className="text-xs text-gray-500 font-medium">Draft or select a mandate to drive the CEO</p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-black/5 hover:bg-black/10 transition-colors text-gray-500 hover:text-gray-900">✕</button>
+        </div>
+
+        <div className="flex flex-1 min-h-0">
+          {/* Left Sidebar: Templates */}
+          <div className="w-56 bg-gray-50/50 border-r border-gray-100 p-4 flex flex-col gap-2">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-2">Templates</p>
+            {(Object.keys(MANDATE_TEMPLATES) as Array<keyof typeof MANDATE_TEMPLATES>).map(k => (
+              <button key={k} onClick={()=>{setTab(k); setLoaded(false);}}
+                className={`text-left px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${tab===k?'bg-white shadow-sm text-blue-600 border border-blue-100':'text-gray-600 hover:bg-gray-100 border border-transparent'}`}>
+                {MANDATE_TEMPLATES[k].title}
+              </button>
+            ))}
+            <div className="w-full h-px bg-gray-200 my-2"/>
+            <button onClick={()=>setTab('custom')}
+              className={`text-left px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${tab==='custom'?'bg-white shadow-sm text-indigo-600 border border-indigo-100':'text-gray-600 hover:bg-gray-100 border border-transparent'}`}>
+              ✏️ Write your own
+            </button>
+          </div>
+
+          {/* Right Area: Editor */}
+          <div className="flex-1 flex flex-col p-6 bg-white min-w-0">
+            <div className="flex items-center gap-3 mb-4">
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Mandate Name:</label>
+              <input type="text" value={filename} onChange={e=>setFilename(e.target.value)} 
+                className="flex-1 max-w-sm px-3 py-1.5 text-sm font-mono bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 ring-blue-500/20 focus:border-blue-400 text-gray-800"
+                placeholder="project_name.md" />
+            </div>
+            <textarea value={content} onChange={e=>setContent(e.target.value)}
+              className="flex-1 w-full bg-gray-50 rounded-2xl border border-gray-200 p-4 font-mono text-sm text-gray-800 leading-relaxed outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 resize-none shadow-inner"
+              placeholder="Write your mandate here..." />
+
+            <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-gray-100">
+              <button onClick={onClose} className="px-5 py-2 text-xs font-bold text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-all">Cancel</button>
+              <button onClick={handleSave} disabled={saving||!content.trim()}
+                className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-bold text-xs shadow-md transition-all disabled:opacity-50">
+                {saving ? 'Saving...' : '💾 Save & Select Mandate'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function Home() {
   const [logs, setLogs]             = useState<{agent:string,msg:string}[]>([]);
@@ -346,6 +443,7 @@ export default function Home() {
   const [pipelinePhase, setPipelinePhase] = useState<{phase:number,total:number,label:string}|null>(null);
   const [reportCount, setReportCount]     = useState(0);
   const [pipelineState, setPipelineState] = useState<'idle'|'running'|'done'|'stopped'>('idle');
+  const [mandateModalOpen, setMandateModalOpen] = useState(false);
   
   // Draggable nodes state
   const [positions, setPositions] = useState<Record<string, {x:number, y:number}>>(
@@ -464,6 +562,16 @@ export default function Home() {
         />
       )}
 
+      {mandateModalOpen && (
+        <MandateModal 
+          activeMandate={activeMandate} 
+          onClose={()=>setMandateModalOpen(false)}
+          onSaved={(fname: string) => {
+            if (socket) { socket.emit('get_mandates'); setTimeout(()=>setActiveMandate(fname), 300); }
+          }} 
+        />
+      )}
+
       {/* Blobs */}
       <div className="fixed top-[-15%] left-[-10%]  w-[600px] h-[600px] bg-blue-200  rounded-full mix-blend-multiply filter blur-[130px] opacity-40 animate-blob pointer-events-none z-0"/>
       <div className="fixed top-[-10%] right-[-10%] w-[500px] h-[500px] bg-purple-200 rounded-full mix-blend-multiply filter blur-[120px] opacity-35 animate-blob animation-delay-2000 pointer-events-none z-0"/>
@@ -479,23 +587,6 @@ export default function Home() {
             <div className="flex-shrink-0">
               <h1 className="text-lg font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-violet-500 to-pink-500 leading-none">Dynasty OS</h1>
               <p className="text-[9px] font-bold text-gray-400 tracking-widest uppercase mt-0.5">V11 · 16 agents</p>
-            </div>
-
-            <div className="w-px h-8 bg-gray-200 flex-shrink-0 hidden xl:block"/>
-
-            {/* Mandate Selector + Upload */}
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <div className="relative">
-                <select value={activeMandate} onChange={e=>setActiveMandate(e.target.value)}
-                  className="bg-gray-50 border border-gray-200 text-gray-700 rounded-xl pl-3 pr-7 py-2 text-xs outline-none focus:ring-2 focus:ring-blue-300 appearance-none font-medium max-w-[220px] truncate">
-                  {mandates.length>0?mandates.map((m,i)=><option key={i}>{m}</option>):<option>No mandates</option>}
-                </select>
-                <span className="absolute inset-y-0 right-2 flex items-center text-gray-400 pointer-events-none text-xs">▾</span>
-              </div>
-              <label className={`cursor-pointer px-3 py-2 rounded-xl border border-gray-200 text-xs text-gray-500 hover:border-blue-300 hover:text-blue-500 transition-colors bg-white font-medium ${uploading?'opacity-50':''}`}>
-                <input type="file" accept=".md,.txt" className="hidden" onChange={handleUpload} disabled={uploading}/>
-                {uploading?'⏳':'📎 Upload'}
-              </label>
             </div>
 
             <div className="w-px h-8 bg-gray-200 flex-shrink-0 hidden xl:block"/>
@@ -540,21 +631,46 @@ export default function Home() {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-3 flex-shrink-0 ml-auto">
+              
+              {/* Type in mandate */}
+              <button onClick={()=>setMandateModalOpen(true)}
+                className="px-4 py-2 bg-gray-50 border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 text-indigo-600 rounded-xl text-xs font-bold transition-all flex items-center gap-2">
+                ✏️ Type Mandate
+              </button>
+
+              <div className="w-px h-6 bg-gray-200 flex-shrink-0 hidden xl:block"/>
+
+              {/* Mandate Selector + Upload */}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="relative">
+                  <select value={activeMandate} onChange={e=>setActiveMandate(e.target.value)}
+                    className="bg-white border border-gray-200 text-gray-700 rounded-xl pl-3 pr-7 py-2 text-[11px] font-bold outline-none focus:ring-2 focus:ring-blue-300 appearance-none shadow-sm max-w-[160px] truncate">
+                    {mandates.length>0?mandates.map((m,i)=><option key={i}>{m}</option>):<option>No mandates</option>}
+                  </select>
+                  <span className="absolute inset-y-0 right-2 flex items-center text-gray-400 pointer-events-none text-[10px]">▾</span>
+                </div>
+                <label className={`cursor-pointer px-3 py-2 rounded-xl border border-gray-200 text-[11px] font-bold text-gray-500 hover:border-blue-300 hover:text-blue-500 transition-colors bg-white shadow-sm ${uploading?'opacity-50':''}`}>
+                  <input type="file" accept=".md,.txt" className="hidden" onChange={handleUpload} disabled={uploading}/>
+                  {uploading?'⏳':'📎'}
+                </label>
+              </div>
+
               {pipelineState==='running' && (
                 <button onClick={stopPipeline}
-                  className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-500 border border-red-200 rounded-xl text-xs font-bold transition-all">
+                  className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-500 border border-red-200 rounded-xl text-xs font-bold transition-all shadow-sm">
                   ⛔ Stop
                 </button>
               )}
               <button onClick={launchPipeline}
                 disabled={!isConnected||pipelineState==='running'||!activeMandate}
-                className="px-5 py-2 bg-gradient-to-r from-blue-500 to-violet-600 hover:from-blue-600 hover:to-violet-700 text-white rounded-xl shadow-[0_4px_12px_rgba(99,102,241,0.3)] disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:-translate-y-0.5 font-bold text-xs flex items-center gap-2">
+                className="px-6 py-2 bg-gradient-to-r from-blue-500 to-violet-600 hover:from-blue-600 hover:to-violet-700 text-white rounded-xl shadow-[0_4px_12px_rgba(99,102,241,0.3)] disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:-translate-y-0.5 font-bold text-xs flex items-center gap-2">
                 {pipelineState==='running' ? <span className="animate-spin">⟳</span> : '▶'}
                 {pipelineState==='done'||pipelineState==='stopped' ? 'Run Again' : 'Launch'}
               </button>
+              
               {/* Connection dot */}
-              <div className="flex items-center gap-1.5 bg-white/90 px-3 py-2 rounded-xl border border-gray-100 shadow-sm">
+              <div className="flex items-center gap-1.5 bg-white/90 px-3 py-2 rounded-xl border border-gray-100 shadow-sm ml-2">
                 <span className="relative flex h-1.5 w-1.5">
                   {isConnected && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"/>}
                   <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${isConnected?'bg-green-500':'bg-red-400'}`}/>
