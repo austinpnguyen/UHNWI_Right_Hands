@@ -4,26 +4,26 @@ import io from 'socket.io-client';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-// ─── Together AI chat models (chat category only, with pricing) ──────────────
+// ─── Together AI chat models (chat category only, with pricing & use case) ────
 const TOGETHER_MODELS = [
-  { id: 'ServiceNow-AI/Apriel-1.6-15b-Thinker',             label: 'Apriel 1.6 15B Thinker',             author: 'ServiceNow',   price: 'Free 🎉' },
-  { id: 'ServiceNow-AI/Apriel-1.5-15b-Thinker',             label: 'Apriel 1.5 15B Thinker',             author: 'ServiceNow',   price: 'Free 🎉' },
-  { id: 'LFM2-24B-A2B',                                     label: 'LFM2 24B A2B',                       author: 'Together',     price: '$0.03/$0.12' },
-  { id: 'google/gemma-3n-e4b-it',                           label: 'Gemma 3N E4B',                       author: 'Google',       price: '$0.02/$0.04' },
-  { id: 'mistralai/Mistral-Small-24B-Instruct-2501',         label: 'Mistral Small 24B',                  author: 'Mistral',      price: '$0.10/$0.30' },
-  { id: 'meta-llama/Meta-Llama-3-8B-Instruct-Lite',         label: 'Llama 3 8B Lite',                    author: 'Meta',         price: '$0.10' },
-  { id: 'Qwen/Qwen2.5-7B-Instruct-Turbo',                   label: 'Qwen2.5 7B Turbo',                   author: 'Qwen',         price: '$0.30' },
-  { id: 'Qwen/Qwen3-9B',                                    label: 'Qwen3.5 9B',                         author: 'Qwen',         price: '$0.10/$0.15' },
-  { id: 'mistralai/Mixtral-8x7B-Instruct-v0.1',             label: 'Mixtral 8x7B Instruct',              author: 'Mistral',      price: '$0.60' },
-  { id: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',          label: 'Llama 3.3 70B Turbo',                author: 'Meta',         price: '$0.88' },
-  { id: 'meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8','label': 'Llama 4 Maverick 17B',             author: 'Meta',         price: '$0.27/$0.85' },
-  { id: 'deepseek-ai/DeepSeek-V3',                          label: 'DeepSeek V3.1',                      author: 'DeepSeek',     price: '$0.60/$1.70' },
-  { id: 'deepseek-ai/deepseek-r1',                          label: 'DeepSeek R1 0528',                   author: 'DeepSeek',     price: '$3.00/$7.00' },
-  { id: 'Qwen/Qwen3-235B-A22B-Instruct-FP8',                label: 'Qwen3 235B Instruct FP8',            author: 'Qwen',         price: '$0.20/$0.60' },
-  { id: 'Qwen/Qwen3-235B-A22B-fp8-thinker',                 label: 'Qwen3 235B Thinking FP8',            author: 'Qwen',         price: '$0.65/$3.00' },
-  { id: 'Qwen/Qwen3.5-72B',                                 label: 'Qwen3.5 72B (397B MoE)',             author: 'Qwen',         price: '$0.60/$3.60' },
-  { id: 'Cogito/cogito-v2-671B',                            label: 'Cogito v2.1 671B',                   author: 'DeepCogito',   price: '$1.25' },
-  { id: 'openai/gpt-4o-mini',                               label: 'OpenAI GPT OSS 20B',                 author: 'OpenAI',       price: '$0.05/$0.20' },
+  { id: 'ServiceNow-AI/Apriel-1.6-15b-Thinker',             label: 'Apriel 1.6 15B Thinker',             author: 'ServiceNow',   price: 'Free 🎉', cat: '🧠 Planning / Reasoning',    catIcon: '🧠' },
+  { id: 'ServiceNow-AI/Apriel-1.5-15b-Thinker',             label: 'Apriel 1.5 15B Thinker',             author: 'ServiceNow',   price: 'Free 🎉', cat: '🧠 Planning / Reasoning',    catIcon: '🧠' },
+  { id: 'LFM2-24B-A2B',                                     label: 'LFM2 24B A2B',                       author: 'Together',     price: '$0.03/$0.12', cat: '⚡ Fast / General',       catIcon: '⚡' },
+  { id: 'google/gemma-3n-e4b-it',                           label: 'Gemma 3N E4B',                       author: 'Google',       price: '$0.02/$0.04', cat: '⚡ Fast / General',       catIcon: '⚡' },
+  { id: 'mistralai/Mistral-Small-24B-Instruct-2501',         label: 'Mistral Small 24B',                  author: 'Mistral',      price: '$0.10/$0.30', cat: '⚡ Fast / General',       catIcon: '⚡' },
+  { id: 'meta-llama/Meta-Llama-3-8B-Instruct-Lite',         label: 'Llama 3 8B Lite',                    author: 'Meta',         price: '$0.10',       cat: '⚡ Fast / General',       catIcon: '⚡' },
+  { id: 'Qwen/Qwen2.5-7B-Instruct-Turbo',                   label: 'Qwen2.5 7B Turbo',                   author: 'Qwen',         price: '$0.30',       cat: '⚡ Fast / General',       catIcon: '⚡' },
+  { id: 'Qwen/Qwen3-9B',                                    label: 'Qwen3.5 9B',                         author: 'Qwen',         price: '$0.10/$0.15', cat: '⚡ Fast / General',       catIcon: '⚡' },
+  { id: 'mistralai/Mixtral-8x7B-Instruct-v0.1',             label: 'Mixtral 8x7B Instruct',              author: 'Mistral',      price: '$0.60',       cat: '⚡ Fast / General',       catIcon: '⚡' },
+  { id: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',          label: 'Llama 3.3 70B Turbo',                author: 'Meta',         price: '$0.88',       cat: '🦾 Heavy Compute',       catIcon: '🦾' },
+  { id: 'meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8','label': 'Llama 4 Maverick 17B',             author: 'Meta',         price: '$0.27/$0.85', cat: '🦾 Heavy Compute',       catIcon: '🦾' },
+  { id: 'deepseek-ai/DeepSeek-V3',                          label: 'DeepSeek V3.1',                      author: 'DeepSeek',     price: '$0.60/$1.70', cat: '💻 Code / Logic',         catIcon: '💻' },
+  { id: 'deepseek-ai/deepseek-r1',                          label: 'DeepSeek R1 0528',                   author: 'DeepSeek',     price: '$3.00/$7.00', cat: '🧠 Planning / Reasoning',    catIcon: '🧠' },
+  { id: 'Qwen/Qwen3-235B-A22B-Instruct-FP8',                label: 'Qwen3 235B Instruct FP8',            author: 'Qwen',         price: '$0.20/$0.60', cat: '🦾 Heavy Compute',       catIcon: '🦾' },
+  { id: 'Qwen/Qwen3-235B-A22B-fp8-thinker',                 label: 'Qwen3 235B Thinking FP8',            author: 'Qwen',         price: '$0.65/$3.00', cat: '🧠 Planning / Reasoning',    catIcon: '🧠' },
+  { id: 'Qwen/Qwen3.5-72B',                                 label: 'Qwen3.5 72B (397B MoE)',             author: 'Qwen',         price: '$0.60/$3.60', cat: '🦾 Heavy Compute',       catIcon: '🦾' },
+  { id: 'Cogito/cogito-v2-671B',                            label: 'Cogito v2.1 671B',                   author: 'DeepCogito',   price: '$1.25',       cat: '🦾 Heavy Compute',       catIcon: '🦾' },
+  { id: 'openai/gpt-4o-mini',                               label: 'OpenAI GPT OSS 20B',                 author: 'OpenAI',       price: '$0.05/$0.20', cat: '⚡ Fast / General',       catIcon: '⚡' },
 ];
 
 // ─── All 16 agents ──────────────────────────────────────────────────────────
@@ -74,7 +74,8 @@ const agentMap = Object.fromEntries(AGENTS.map(a=>[a.key,a]));
 
 // ─── Agent Config Modal ──────────────────────────────────────────────────────
 function AgentModal({ agent, onClose, agentStream, agentLogs, activeAgents, completedAgents }: any) {
-  const [tab, setTab]           = useState<'config'|'prompt'|'output'|'logs'>('config');
+  const [tab, setTab]           = useState<'info'|'output'|'logs'>('info');
+  const [configMode, setConfigMode] = useState<'model'|'prompt'|null>(null);
   const [selectedModel, setSelectedModel] = useState('');
   const [promptContent, setPromptContent] = useState('');
   const [loadingPrompt, setLoadingPrompt] = useState(false);
@@ -94,21 +95,21 @@ function AgentModal({ agent, onClose, agentStream, agentLogs, activeAgents, comp
       .catch(()=>{});
   }, [agent.key]);
 
-  // Load prompt when tab switches to prompt
+  // Load prompt when configMode switches to prompt
   useEffect(() => {
-    if (tab !== 'prompt' || promptContent) return;
+    if (configMode !== 'prompt' || promptContent) return;
     setLoadingPrompt(true);
     fetch(`http://localhost:8080/agent-prompt/${agent.key}`)
       .then(r=>r.json())
       .then(d => setPromptContent(d.content || ''))
       .catch(()=>setPromptContent('⚠️ Could not reach backend.\n\nMake sure the Node server is running:\n  cd backend && node server.js'))
       .finally(()=>setLoadingPrompt(false));
-  }, [tab, agent.key]);
+  }, [configMode, agent.key]);
 
   // Auto-scroll output
   useEffect(() => {
-    if (tab === 'output' && outputRef.current) outputRef.current.scrollTop = outputRef.current.scrollHeight;
-  }, [agentStream, tab]);
+    if (tab === 'output' && outputRef.current && !configMode) outputRef.current.scrollTop = outputRef.current.scrollHeight;
+  }, [agentStream, tab, configMode]);
 
   const saveConfig = async () => {
     setSaving(true);
@@ -131,8 +132,7 @@ function AgentModal({ agent, onClose, agentStream, agentLogs, activeAgents, comp
   };
 
   const TABS = [
-    { id:'config',  label:'⚙️ Model' },
-    { id:'prompt',  label:'📝 Prompt' },
+    { id:'info',    label:'ℹ️ Info' },
     { id:'output',  label:'📄 Output' },
     { id:'logs',    label:'📡 Logs'   },
   ];
@@ -164,75 +164,84 @@ function AgentModal({ agent, onClose, agentStream, agentLogs, activeAgents, comp
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex border-b border-gray-100 px-6 bg-white/60">
-          {TABS.map(t=>(
-            <button key={t.id} onClick={()=>setTab(t.id as any)}
-              className={`px-4 py-3 text-xs font-bold transition-all border-b-2 -mb-px ${tab===t.id ? `border-blue-500 text-blue-600` : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
-              {t.label}
-            </button>
-          ))}
-        </div>
+        {/* Tabs (Hide when in configMode) */}
+        {!configMode && (
+          <div className="flex border-b border-gray-100 px-6 bg-white/60">
+            {TABS.map(t=>(
+              <button key={t.id} onClick={()=>setTab(t.id as any)}
+                className={`px-4 py-3 text-xs font-bold transition-all border-b-2 -mb-px ${tab===t.id ? `border-blue-500 text-blue-600` : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+        )}
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6">
+        {/* Main Body */}
+        <div className="flex-1 overflow-y-auto p-6 relative">
 
-          {/* ── Model Selection ── */}
-          {tab==='config' && (
-            <div className="flex flex-col gap-5">
-              <div>
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">Select Model</label>
-                <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
-                  {TOGETHER_MODELS.map(m=>(
-                    <label key={m.id}
-                      className={`flex items-center gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${selectedModel===m.id ? `border-blue-300 bg-blue-50/60 ring-1 ring-blue-300` : 'border-gray-100 hover:border-gray-200 hover:bg-gray-50'}`}>
-                      <input type="radio" name="model" value={m.id} checked={selectedModel===m.id}
-                        onChange={()=>setSelectedModel(m.id)} className="hidden"/>
-                      <span className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${selectedModel===m.id?'border-blue-500':'border-gray-300'}`}>
-                        {selectedModel===m.id && <span className="w-2 h-2 rounded-full bg-blue-500"/>}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-sm text-gray-900 truncate">{m.label}</div>
-                        <div className="text-[10px] text-gray-400">{m.author}</div>
-                      </div>
-                      <span className={`text-[10px] font-bold px-2 py-1 rounded-lg flex-shrink-0 ${m.price.includes('Free')?'bg-emerald-100 text-emerald-700':'bg-gray-100 text-gray-500'}`}>
-                        {m.price}
-                      </span>
-                    </label>
-                  ))}
+          {/* ── Settings Header (Only in configMode) ── */}
+          {configMode && (
+            <div className="mb-4 flex gap-2 border-b border-gray-100 pb-4">
+              <button onClick={()=>setConfigMode('model')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${configMode==='model'?'bg-blue-50 text-blue-600 ring-1 ring-blue-200':'text-gray-500 hover:bg-gray-50'}`}>⚙️ Switch Model</button>
+              <button onClick={()=>setConfigMode('prompt')} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${configMode==='prompt'?'bg-blue-50 text-blue-600 ring-1 ring-blue-200':'text-gray-500 hover:bg-gray-50'}`}>📝 Edit Prompt</button>
+            </div>
+          )}
+
+          {/* ── Main Tab: Info ── */}
+          {!configMode && tab==='info' && (
+            <div className="flex flex-col gap-6">
+              <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100">
+                <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Agent Identity</h3>
+                <div className="flex items-start gap-4">
+                  <span className={`text-4xl w-16 h-16 flex items-center justify-center rounded-2xl shadow-sm ${c.ic} shrink-0`}>{agent.icon}</span>
+                  <div>
+                    <h4 className="font-bold text-gray-900 text-lg mb-1">{agent.label}</h4>
+                    <p className="text-sm text-gray-600 leading-relaxed">Assigned Role: <strong className="text-gray-900">{agent.role}</strong>.</p>
+                    <p className="text-sm text-gray-500 mt-2 leading-relaxed">This agent belongs to the <strong className="capitalize text-gray-800">{agent.div.replace('_',' ')}</strong> division. It receives inputs from upstream agents and generates specialized strategic reports.</p>
+                  </div>
                 </div>
+              </div>
+              
+              <div className="bg-blue-50/50 rounded-2xl p-5 border border-blue-100/50">
+                <h3 className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-3">Live Status</h3>
+                {isActive ? (
+                  <div className="flex items-center gap-3">
+                    <span className="relative flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"/><span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"/></span>
+                    <span className="text-sm font-semibold text-blue-800">Agent is currently computing...</span>
+                  </div>
+                ) : isDone ? (
+                  <div className="flex items-center gap-3">
+                    <span className="h-3 w-3 rounded-full bg-emerald-500"/>
+                    <span className="text-sm font-semibold text-emerald-800">Task completed successfully. Check the Output tab.</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <span className="h-3 w-3 rounded-full bg-gray-300"/>
+                    <span className="text-sm font-medium text-gray-500">Idle. Waiting for pipeline launch.</span>
+                  </div>
+                )}
               </div>
             </div>
           )}
 
-          {/* ── Prompt Editor ── */}
-          {tab==='prompt' && (
-            <div className="flex flex-col gap-3 h-full">
-              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">System Prompt (raw .md file)</label>
-              {loadingPrompt
-                ? <div className="text-sm text-gray-400">Loading…</div>
-                : <textarea value={promptContent} onChange={e=>setPromptContent(e.target.value)}
-                    className="flex-1 w-full min-h-[400px] bg-gray-50 border border-gray-200 rounded-2xl p-4 font-mono text-xs text-gray-700 outline-none focus:ring-2 focus:ring-blue-300 resize-y leading-relaxed"
-                    spellCheck={false}/>
-              }
-            </div>
-          )}
-
-          {/* ── Output ── */}
-          {tab==='output' && (
+          {/* ── Main Tab: Output ── */}
+          {!configMode && tab==='output' && (
             <div>
               {agentStream
                 ? <div ref={outputRef} className="prose prose-sm max-w-none text-gray-700 markdown-body">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>{agentStream}</ReactMarkdown>
                     {isActive && <span className={`inline-block w-2 h-4 ml-1 align-middle rounded-sm animate-pulse ${c.dot}`}/>}
                   </div>
-                : <p className="text-gray-400 italic text-sm">No output yet. Launch the Agent Chain first.</p>
+                : <div className="h-40 flex flex-col items-center justify-center text-center">
+                    <span className="text-3xl mb-3 opacity-20">{agent.icon}</span>
+                    <p className="text-gray-400 italic text-sm">No output yet.</p>
+                  </div>
               }
             </div>
           )}
 
-          {/* ── Logs ── */}
-          {tab==='logs' && (
+          {/* ── Main Tab: Logs ── */}
+          {!configMode && tab==='logs' && (
             <div className="bg-gray-50 rounded-2xl border border-gray-100 p-4 font-mono text-[11px] space-y-1.5 max-h-[50vh] overflow-y-auto shadow-inner">
               {agentLogs.length > 0
                 ? agentLogs.map((l: any, i: number)=>(
@@ -244,20 +253,72 @@ function AgentModal({ agent, onClose, agentStream, agentLogs, activeAgents, comp
               }
             </div>
           )}
+
+          {/* ── Config: Model Selection ── */}
+          {configMode==='model' && (
+            <div className="flex flex-col gap-4">
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest hidden">Select Model</label>
+              <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
+                {TOGETHER_MODELS.map(m=>(
+                  <label key={m.id}
+                    className={`flex items-center gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${selectedModel===m.id ? `border-blue-300 bg-blue-50/60 ring-1 ring-blue-300` : 'border-gray-100 hover:border-gray-200 hover:bg-gray-50'}`}>
+                    <input type="radio" name="model" value={m.id} checked={selectedModel===m.id}
+                      onChange={()=>setSelectedModel(m.id)} className="hidden"/>
+                    <span className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${selectedModel===m.id?'border-blue-500':'border-gray-300'}`}>
+                      {selectedModel===m.id && <span className="w-2 h-2 rounded-full bg-blue-500"/>}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm text-gray-900 truncate">{m.label}</span>
+                        <span className="text-[10px] font-medium bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded flex items-center gap-1"><span title={m.cat}>{m.catIcon}</span> {m.cat}</span>
+                      </div>
+                      <div className="text-[10px] text-gray-400 mt-0.5">{m.author}</div>
+                    </div>
+                    <span className={`text-[10px] font-bold px-2 py-1 rounded-lg flex-shrink-0 ${m.price.includes('Free')?'bg-emerald-100 text-emerald-700':'bg-gray-100 text-gray-500'}`}>
+                      {m.price}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── Config: Prompt Editor ── */}
+          {configMode==='prompt' && (
+            <div className="flex flex-col gap-3 h-full">
+              {loadingPrompt
+                ? <div className="text-sm text-gray-400">Loading…</div>
+                : <textarea value={promptContent} onChange={e=>setPromptContent(e.target.value)}
+                    className="flex-1 w-full min-h-[400px] bg-gray-50 border border-gray-200 rounded-2xl p-4 font-mono text-xs text-gray-700 outline-none focus:ring-2 focus:ring-blue-300 resize-y leading-relaxed"
+                    spellCheck={false}/>
+              }
+            </div>
+          )}
         </div>
 
         {/* Footer */}
         <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between bg-white/60">
-          <div className="text-xs font-semibold text-emerald-600">{saveMsg}</div>
+          <div className="flex items-center gap-3">
+            {!configMode ? (
+              <button onClick={()=>setConfigMode('model')} title="Configure Agent Options"
+                className="w-9 h-9 flex items-center justify-center rounded-xl bg-gray-50 border border-gray-200 text-gray-400 hover:text-gray-700 hover:bg-white hover:shadow-sm transition-all focus:ring-2 focus:ring-blue-200">
+                ⚙️
+              </button>
+            ) : (
+              <button onClick={()=>setConfigMode(null)} className="text-[10px] font-bold text-gray-400 uppercase tracking-widest hover:text-gray-600">← Back to Info</button>
+            )}
+            <div className="text-xs font-semibold text-emerald-600 ml-2">{saveMsg}</div>
+          </div>
+          
           <div className="flex gap-2">
-            <button onClick={onClose} className="px-4 py-2 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-100 transition-colors">Cancel</button>
-            {tab==='config' && (
+            <button onClick={onClose} className="px-4 py-2 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-100 transition-colors">Close</button>
+            {configMode==='model' && (
               <button onClick={saveConfig} disabled={saving}
                 className="px-5 py-2 bg-gradient-to-r from-blue-500 to-violet-600 text-white rounded-xl text-xs font-bold shadow-sm disabled:opacity-50 hover:-translate-y-0.5 transition-all">
                 {saving ? 'Saving…' : 'Save Model'}
               </button>
             )}
-            {tab==='prompt' && (
+            {configMode==='prompt' && (
               <button onClick={savePrompt} disabled={saving||loadingPrompt}
                 className="px-5 py-2 bg-gradient-to-r from-blue-500 to-violet-600 text-white rounded-xl text-xs font-bold shadow-sm disabled:opacity-50 hover:-translate-y-0.5 transition-all">
                 {saving ? 'Saving…' : 'Save Prompt'}
