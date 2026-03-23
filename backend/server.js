@@ -141,9 +141,7 @@ async function runAgent({ socket, agentKey, userMessage, outputPath }) {
     const systemPrompt = stripFrontmatter(fs.readFileSync(path.join(__dirname, promptPath), 'utf8'));
     socket.emit('agent_log',    { agent: agentKey, msg: `[${agentKey}] Starting on ${model}...` });
     socket.emit('agent_active', { agent: agentKey, active: true });
-
-    const GUARDRAIL = `IMPORTANT: You do NOT have access to any tools, file systems, or external APIs.\nALL context you need is provided directly in this message.\nDo NOT output any <tool_calls>, <function_call>, Glob, Read, or similar blocks.\nGenerate your full written report NOW using only the text provided below.\n---\n\n`;
-
+    const GUARDRAIL = `IMPORTANT: The user requires you to wrap ALL your internal monologues, reasoning, thoughts, and planning explicitly inside <think>...</think> tags. Only your final, beautifully formatted markdown executive report should be placed outside these tags.\n---\n\n`;
     const runner = await together.chat.completions.create({
         messages: [
             { role: "system", content: systemPrompt },
