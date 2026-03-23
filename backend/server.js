@@ -194,7 +194,7 @@ io.on('connection', (socket) => {
         const outDir = path.join(__dirname, '../company_files/crucible_testing');
         const tag    = `${data.mandate.replace(/\.(md|txt)$/, '')}_${Date.now()}`;
 
-        socket.emit('pipeline_phase', { phase: 1, total: 2, label: 'Phase 1 — CEO: Master Plan' });
+        socket.emit('pipeline_phase', { phase: 1, total: 3, label: 'Phase 1 — CEO: Master Plan' });
 
         try {
             const ceoPlan = await runAgent({
@@ -203,19 +203,44 @@ io.on('connection', (socket) => {
                 outputPath: path.join(outDir, `master_plan_v1_${tag}.md`)
             });
 
-            socket.emit('agent_log',    { agent: 'System', msg: 'CEO complete. Dispatching C-Suite in parallel...' });
-            socket.emit('pipeline_phase', { phase: 2, total: 2, label: 'Phase 2 — C-Suite: Parallel Rundown' });
+            socket.emit('agent_log',    { agent: 'System', msg: 'CEO complete. Dispatching C-Suite (Phase 2) in parallel...' });
+            socket.emit('pipeline_phase', { phase: 2, total: 3, label: 'Phase 2 — C-Suite: Strategy Formulation' });
 
             const sharedCtx = `MANDATE:\n${mandateContent}\n\nCEO MASTER PLAN:\n${ceoPlan}`;
-            await Promise.all([
+            const [cpoArch, cfoFin, cmoGtm, cooOps] = await Promise.all([
                 runAgent({ socket, agentKey: 'CPO', userMessage: `EXECUTE YOUR ROLE. Design the full product architecture.\n\n${sharedCtx}`, outputPath: path.join(outDir, `architecture_${tag}.md`) }),
                 runAgent({ socket, agentKey: 'CFO', userMessage: `EXECUTE YOUR ROLE. Produce a brutal financial constraint model.\n\n${sharedCtx}`, outputPath: path.join(outDir, `financial_model_${tag}.md`) }),
                 runAgent({ socket, agentKey: 'CMO', userMessage: `EXECUTE YOUR ROLE. Design the complete go-to-market and brand strategy.\n\n${sharedCtx}`, outputPath: path.join(outDir, `gtm_strategy_${tag}.md`) }),
                 runAgent({ socket, agentKey: 'COO', userMessage: `EXECUTE YOUR ROLE. Map out the full operational execution framework.\n\n${sharedCtx}`, outputPath: path.join(outDir, `ops_framework_${tag}.md`) }),
             ]);
 
-            socket.emit('agent_log',        { agent: 'System', msg: 'Pipeline [CSUITE] complete. 5 reports filed.' });
-            socket.emit('pipeline_complete', { phase: 'csuite', reportCount: 5 });
+            socket.emit('agent_log',    { agent: 'System', msg: 'C-Suite complete. Dispatching specialized divisions (Phase 3)...' });
+            socket.emit('pipeline_phase', { phase: 3, total: 3, label: 'Phase 3 — Specialized Divisions: Execution & Validation' });
+
+            // Phase 3: Specialized execution branches based on C-Suite outputs
+            await Promise.all([
+                // CPO Branch
+                runAgent({ socket, agentKey: 'CIO',          userMessage: `EXECUTE YOUR ROLE. Review the CPO Architecture and define the Tech Infrastructure.\n\nCPO ARCHITECTURE:\n${cpoArch}`, outputPath: path.join(outDir, `tech_infrastructure_${tag}.md`) }),
+                
+                // CFO Branch
+                runAgent({ socket, agentKey: 'AUDITOR',      userMessage: `EXECUTE YOUR ROLE. Validate and aggressively stress-test the CFO's Financial Model.\n\nCFO FINANCIAL MODEL:\n${cfoFin}`, outputPath: path.join(outDir, `audit_report_${tag}.md`) }),
+                runAgent({ socket, agentKey: 'CLO',          userMessage: `EXECUTE YOUR ROLE. Review the CFO Financials for legal and compliance risks.\n\nCFO FINANCIAL MODEL:\n${cfoFin}`, outputPath: path.join(outDir, `legal_strategy_${tag}.md`) }),
+                
+                // CMO Branch
+                runAgent({ socket, agentKey: 'MKT_ANALYST',  userMessage: `EXECUTE YOUR ROLE. Analyze the CMO's GTM Strategy for market viability.\n\nCMO GTM STRATEGY:\n${cmoGtm}`, outputPath: path.join(outDir, `market_analysis_${tag}.md`) }),
+                runAgent({ socket, agentKey: 'COMPETITOR',   userMessage: `EXECUTE YOUR ROLE. Act as the Competitor Simulator to destroy the CMO's GTM Strategy.\n\nCMO GTM STRATEGY:\n${cmoGtm}`, outputPath: path.join(outDir, `competitor_simulation_${tag}.md`) }),
+                runAgent({ socket, agentKey: 'TARGET_BUYER', userMessage: `EXECUTE YOUR ROLE. Act as the Target Buyer evaluating the CMO's GTM Strategy.\n\nCMO GTM STRATEGY:\n${cmoGtm}`, outputPath: path.join(outDir, `buyer_psychology_${tag}.md`) }),
+                runAgent({ socket, agentKey: 'UNAWARE',      userMessage: `EXECUTE YOUR ROLE. Evaluate the CMO's GTM Strategy from the perspective of an unaware layperson.\n\nCMO GTM STRATEGY:\n${cmoGtm}`, outputPath: path.join(outDir, `unaware_audience_${tag}.md`) }),
+                
+                // COO Branch
+                runAgent({ socket, agentKey: 'COS',          userMessage: `EXECUTE YOUR ROLE. Review the COO's Ops Framework and output an executive coordination schedule.\n\nCOO OPS FRAMEWORK:\n${cooOps}`, outputPath: path.join(outDir, `exec_coordination_${tag}.md`) }),
+                runAgent({ socket, agentKey: 'CISO',         userMessage: `EXECUTE YOUR ROLE. Review the COO's Ops Framework for security vulnerabilities.\n\nCOO OPS FRAMEWORK:\n${cooOps}`, outputPath: path.join(outDir, `security_privacy_${tag}.md`) }),
+                runAgent({ socket, agentKey: 'FIXER',        userMessage: `EXECUTE YOUR ROLE. Identify crisis points in the COO's Ops Framework and plan resolutions.\n\nCOO OPS FRAMEWORK:\n${cooOps}`, outputPath: path.join(outDir, `crisis_resolution_${tag}.md`) }),
+                runAgent({ socket, agentKey: 'WHISPERER',    userMessage: `EXECUTE YOUR ROLE. Review the COO's Ops Framework for intelligence vulnerabilities.\n\nCOO OPS FRAMEWORK:\n${cooOps}`, outputPath: path.join(outDir, `intelligence_recon_${tag}.md`) }),
+            ]);
+
+            socket.emit('agent_log',        { agent: 'System', msg: 'Pipeline [FULL DYNASTY] complete. All 16 reports filed.' });
+            socket.emit('pipeline_complete', { phase: 'csuite', reportCount: 16 });
         } catch (err) {
             if (err.message === 'STOPPED') {
                 socket.emit('pipeline_complete', { phase: 'stopped', reportCount: 0 });
