@@ -161,18 +161,37 @@ async function runAgent({ socket, agentKey, userMessage, outputPath }) {
         if (!token) continue;
         thinkBuf += token;
         let flushed = "", buf = thinkBuf; thinkBuf = "";
-        while (buf.length > 0) {
+        while (thinkBuf.length > 0) {
             if (!inThink) {
-                const oi = buf.indexOf('<think>');
-                if (oi === -1) { flushed += buf; buf = ""; }
-                else { flushed += buf.slice(0, oi); buf = buf.slice(oi + 7); inThink = true; }
+                const oi = thinkBuf.indexOf('<think>');
+                if (oi !== -1) {
+                    flushed += thinkBuf.slice(0, oi);
+                    thinkBuf = thinkBuf.slice(oi + 7);
+                    inThink = true;
+                } else {
+                    const safeLen = Math.max(0, thinkBuf.length - 6);
+                    flushed += thinkBuf.slice(0, safeLen);
+                    thinkBuf = thinkBuf.slice(safeLen);
+                    break;
+                }
             } else {
-                const ci = buf.indexOf('</think>');
-                if (ci === -1) { buf = ""; }
-                else { buf = buf.slice(ci + 8); inThink = false; }
+                const ci = thinkBuf.indexOf('</think>');
+                if (ci !== -1) {
+                    thinkBuf = thinkBuf.slice(ci + 8);
+                    inThink = false;
+                } else {
+                    const safeLen = Math.max(0, thinkBuf.length - 7);
+                    thinkBuf = thinkBuf.slice(safeLen);
+                    break;
+                }
             }
         }
         if (flushed) { output += flushed; socket.emit('agent_stream', { agent: agentKey, chunk: flushed }); }
+    }
+
+    if (!inThink && thinkBuf.length > 0) {
+        output += thinkBuf;
+        socket.emit('agent_stream', { agent: agentKey, chunk: thinkBuf });
     }
 
     if (output) {
@@ -285,7 +304,18 @@ Whisperer: ${truncate(phase3Outputs[10], 2000)}
             const finalReportFileName = `final_report_${tag}.md`;
             const ceoFinal = await runAgent({
                 socket, agentKey: 'CEO', 
-                userMessage: `EXECUTE YOUR ROLE: ALL Divisons have weighed in on your Master Plan V1. Below is the brutal feedback from the Market and the Shield.\n\nSynthesize all of this into a FINAL Executive Report for the Founder. Acknowledge the flaws found by the Auditors/Competitors and state the required pivots or explicitly state that the Founder should kill the project. Do NOT write V1 again.\n\n${finalReportCtx}`,
+                userMessage: `EXECUTE YOUR ROLE: ALL Divisons have weighed in on your Master Plan V1. Below is the brutal feedback from the Market and the Shield.
+
+Synthesize all of this into a FINAL Executive Report for the Founder. Acknowledge the flaws found by the Auditors/Competitors and state the required pivots or explicitly state that the Founder should kill the project. Do NOT write V1 again.
+
+This report MUST BE HIGHLY DESCRIPTIVE, structured with professional severity. Include:
+1. EXECUTIVE SUMMARY: The brutal truth on whether to Pivot, Persevere, or Kill.
+2. DIVISIONAL VULNERABILITIES: Summarize the most critical attacks from the Shield and Market divisions.
+3. STRATEGIC PIVOTS: Lay out the exact paradigm shift required in Architecture (CPO), Financials (CFO), and Brand (CMO) to survive.
+
+Do not just give a brief summary. Write a comprehensive, multi-section advisory report. Use Markdown.
+
+${finalReportCtx}`,
                 outputPath: path.join(outDir, finalReportFileName)
             });
 
