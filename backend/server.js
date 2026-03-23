@@ -74,15 +74,26 @@ const STATE_PATH = path.join(__dirname, 'system_state.json');
 // ─── REST: System State ───────────────────────────────────────────────────────
 app.get('/system-state', (req, res) => {
     if (!fs.existsSync(STATE_PATH)) {
-        res.json({ agents: null, divisions: null });
+        res.json({ activeCompanyId: null, companies: null });
     } else {
-        res.json(JSON.parse(fs.readFileSync(STATE_PATH, 'utf8')));
+        let data = JSON.parse(fs.readFileSync(STATE_PATH, 'utf8'));
+        // Backwards compatibility upgrade
+        if (data.agents && !data.companies) {
+            data = {
+                activeCompanyId: 'default',
+                companies: {
+                    'default': { name: 'Alpha Startup', agents: data.agents, divisions: data.divisions }
+                }
+            };
+            fs.writeFileSync(STATE_PATH, JSON.stringify(data, null, 2));
+        }
+        res.json(data);
     }
 });
 
 app.put('/system-state', (req, res) => {
-    const { agents, divisions } = req.body;
-    fs.writeFileSync(STATE_PATH, JSON.stringify({ agents, divisions }, null, 2));
+    const { activeCompanyId, companies } = req.body;
+    fs.writeFileSync(STATE_PATH, JSON.stringify({ activeCompanyId, companies }, null, 2));
     res.json({ ok: true });
 });
 

@@ -578,19 +578,56 @@ const DEFAULT_DIVISIONS = [
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function Home() {
-  const [agents, setAgents] = useState<any[]>(INITIAL_AGENTS);
+  const [companies, setCompanies] = useState<Record<string, any>>({
+    'default': { name: 'Alpha Startup', agents: INITIAL_AGENTS, divisions: DEFAULT_DIVISIONS }
+  });
+  const [activeCompanyId, setActiveCompanyId] = useState<string>('default');
+
+  const activeCompany = companies[activeCompanyId] || companies['default'] || { name: 'Alpha Startup', agents: INITIAL_AGENTS, divisions: DEFAULT_DIVISIONS };
+  const agents = activeCompany.agents || INITIAL_AGENTS;
+  const divisions = activeCompany.divisions || DEFAULT_DIVISIONS;
   const [edges, setEdges] = useState<any[]>(INITIAL_EDGES);
-  const [divisions, setDivisions] = useState(DEFAULT_DIVISIONS);
+
+  // Camera State
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({x: 0, y: 0});
+  const [toolMode, setToolMode] = useState<'move'|'pan'>('move');
+  const [isSpaceDown, setIsSpaceDown] = useState(false);
 
   const [editingDiv, setEditingDiv] = useState<string|null>(null);
   const [divEditName, setDivEditName] = useState('');
 
-  const saveSystemState = async (newAgents: any[], newDivs: any[]) => {
-    try { await fetch('http://localhost:1110/system-state', { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ agents: newAgents, divisions: newDivs }) }); } catch(err){}
+  const saveSystemState = async (newComps: Record<string,any>, newActiveId: string) => {
+    try { await fetch('http://localhost:1110/system-state', { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ activeCompanyId: newActiveId, companies: newComps }) }); } catch(err){}
   };
 
-  const agentMap = Object.fromEntries(agents.map(a=>[a.key,a]));
-  const ALL_KEYS = agents.map(a=>a.key);
+  const updateActiveCompany = (newAgents: any[], newDivs: any[]) => {
+    const newComps = { ...companies, [activeCompanyId]: { ...activeCompany, agents: newAgents, divisions: newDivs } };
+    setCompanies(newComps);
+    saveSystemState(newComps, activeCompanyId);
+    return newComps;
+  };
+
+  const handleAddCompany = () => {
+    const name = window.prompt("Enter Name for new Startup:", "New Startup");
+    if(!name) return;
+    const newId = `comp_${Date.now()}`;
+    const newComps = { ...companies, [newId]: { name, agents: INITIAL_AGENTS, divisions: DEFAULT_DIVISIONS } };
+    setCompanies(newComps);
+    setActiveCompanyId(newId);
+    setPositions(Object.fromEntries(INITIAL_AGENTS.map((a:any) => [a.key, {x: a.x, y: a.y}])));
+    saveSystemState(newComps, newId);
+  };
+
+  const handleSwitchCompany = (compId: string) => {
+    setActiveCompanyId(compId);
+    const c = companies[compId] || companies['default'];
+    setPositions(Object.fromEntries((c.agents||[]).map((a:any) => [a.key, {x: a.x, y: a.y}])));
+    saveSystemState(companies, compId);
+  };
+
+  const agentMap = Object.fromEntries(agents.map((a:any)=>[a.key,a]));
+  const ALL_KEYS = agents.map((a:any)=>a.key);
   
   const [expandedDivs, setExpandedDivs] = useState<Record<string,boolean>>({ company: true, inner_circle: true, shield: true, market: true });
   const [removeCandidate, setRemoveCandidate] = useState<any>(null);
@@ -607,8 +644,7 @@ export default function Home() {
     } else {
        newAgents = newAgents.map(a => a.key === oldKey ? { ...a, ...updates } : a);
     }
-    setAgents(newAgents);
-    saveSystemState(newAgents, divisions);
+    updateActiveCompany(newAgents, divisions);
   };
 
   const handleHireEmployee = () => {
@@ -616,20 +652,18 @@ export default function Home() {
     const assignedKey = `BADGE-${Math.floor(Math.random()*90000+10000)}`;
     const newAgent = { ...newAgentForm, key: assignedKey, div: addModalDiv, x: 825, y: Math.random()*200+300, desc: newAgentForm.isHuman ? "Human Executive (Requires Webhook)" : "Newly hired AI Executive." };
     const newAgents = [...agents, newAgent];
-    setAgents(newAgents);
     setPositions(p => ({...p, [newAgent.key]: {x: newAgent.x, y: newAgent.y}}));
     setAddModalDiv(null);
     setNewAgentForm({ label:'', role:'', icon: '🤖', color:'gray', isHuman: false });
-    saveSystemState(newAgents, divisions);
+    updateActiveCompany(newAgents, divisions);
   };
 
   const handleFireEmployee = () => {
     if(!removeCandidate) return;
-    const newAgents = agents.filter(a => a.key !== removeCandidate.key);
-    setAgents(newAgents);
+    const newAgents = agents.filter((a:any) => a.key !== removeCandidate.key);
     setEdges(p => p.filter(e => e.from !== removeCandidate.key && e.to !== removeCandidate.key));
     setRemoveCandidate(null);
-    saveSystemState(newAgents, divisions);
+    updateActiveCompany(newAgents, divisions);
   };
 
   const [socket, setSocket] = useState<any>(null);
@@ -671,11 +705,14 @@ export default function Home() {
 
   useEffect(()=>{
     fetch('http://localhost:1110/system-state').then(r=>r.json()).then(data => {
-      if (data.agents && data.agents.length > 0) {
-        setAgents(data.agents);
-        setPositions(Object.fromEntries(data.agents.map((a:any) => [a.key, {x: a.x, y: a.y}])));
+      if (data.companies && data.activeCompanyId) {
+        setCompanies(data.companies);
+        setActiveCompanyId(data.activeCompanyId);
+        const active = data.companies[data.activeCompanyId];
+        if (active && active.agents) {
+          setPositions(Object.fromEntries(active.agents.map((a:any) => [a.key, {x: a.x, y: a.y}])));
+        }
       }
-      if (data.divisions && data.divisions.length > 0) setDivisions(data.divisions);
     }).catch(()=>{});
 
     const s = io('http://localhost:1110');
@@ -718,7 +755,7 @@ export default function Home() {
     setAgentStreams(Object.fromEntries(ALL_KEYS.map((k: string)=>[k,'']))); setLogs([]);
     setPipelinePhase(null);    setPipelineState('running');
     setReportCount(0);
-    socket.emit('trigger_pipeline',{instruction:activeInstruction, activeAgentKeys: agents.map(a=>a.key), agents});
+    socket.emit('trigger_pipeline',{instruction:activeInstruction, activeAgentKeys: agents.map((a:any)=>a.key), agents});
   };
 
   const stopPipeline = ()=>{
@@ -748,39 +785,105 @@ export default function Home() {
     return `M ${x1} ${y1} C ${x1} ${cy}, ${x2} ${cy}, ${x2} ${y2}`;
   };
 
-  // Node drag handlers
-  const handlePointerDown = (e: React.PointerEvent, key: string) => {
-    if (e.target instanceof Element && e.target.closest('button')) return; // Ignore if clicking a button
+  const isPanningCanvas = useRef(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+        setIsSpaceDown(true);
+      }
+      if ((e.metaKey || e.ctrlKey) && (e.key === '=' || e.key === '+' || e.key === '-')) {
+        e.preventDefault();
+        setZoom(z => Math.max(0.1, Math.min(3, e.key === '-' ? z - 0.1 : z + 0.1)));
+      }
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') setIsSpaceDown(false);
+    };
+    window.addEventListener('keydown', handleKeyDown, { passive: false });
+    window.addEventListener('keyup', handleKeyUp);
+    return () => { window.removeEventListener('keydown', handleKeyDown); window.removeEventListener('keyup', handleKeyUp); };
+  }, []);
+
+  const fitView = () => {
+    if (agents.length === 0) { setZoom(1); setPan({x:0, y:0}); return; }
+    const minX = Math.min(...agents.map((a:any) => a.x));
+    const maxX = Math.max(...agents.map((a:any) => a.x));
+    const minY = Math.min(...agents.map((a:any) => a.y));
+    const maxY = Math.max(...agents.map((a:any) => a.y));
+    const contentW = maxX - minX + NODE_W;
+    const contentH = maxY - minY + NODE_H;
+    const availW = window.innerWidth - (isLeftPanelOpen ? 288 : 0) - (isRightPanelOpen ? 320 : 0);
+    const availH = window.innerHeight - 64; 
+    const scaleX = (availW - 100) / contentW; // 100px padding
+    const scaleY = (availH - 100) / contentH;
+    const newZoom = Math.max(0.1, Math.min(1, Math.min(scaleX, scaleY)));
+    setZoom(newZoom);
+    setPan({
+       x: (availW / 2 / newZoom) - (minX + contentW/2),
+       y: (availH / 2 / newZoom) - (minY + contentH/2)
+    });
+  };
+
+  const handleCanvasWheel = (e: React.WheelEvent) => {
+    if (e.metaKey || e.ctrlKey) {
+      e.preventDefault();
+      setZoom(z => Math.max(0.1, Math.min(3, z + (e.deltaY * -0.002))));
+    } else if (toolMode === 'pan' || isSpaceDown) {
+      setPan(p => ({ x: p.x - (e.deltaX / zoom), y: p.y - (e.deltaY / zoom) }));
+    }
+  };
+
+  const handlePointerDownCanvas = (e: React.PointerEvent) => {
+    if (e.target instanceof Element && e.target.closest('button')) return;
+    if (toolMode === 'pan' || isSpaceDown || e.button === 1) {
+      isPanningCanvas.current = true;
+      e.currentTarget.setPointerCapture(e.pointerId);
+      dragOrigin.current = { x: e.clientX, y: e.clientY };
+    }
+  };
+
+  const handlePointerDownNode = (e: React.PointerEvent, key: string) => {
+    if (e.target instanceof Element && e.target.closest('button')) return;
+    if (toolMode === 'pan' || isSpaceDown) return; 
+    e.stopPropagation();
     setDraggingNode(key);
     dragOrigin.current = { x: e.clientX, y: e.clientY };
     const p = positions[key];
-    setDragOffset({ x: e.clientX - p.x, y: e.clientY - p.y });
+    setDragOffset({ x: p.x, y: p.y });
     e.currentTarget.setPointerCapture(e.pointerId);
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (!draggingNode) return;
-    setPositions(prev => ({
-      ...prev,
-      [draggingNode]: {
-        x: e.clientX - dragOffset.x,
-        y: e.clientY - dragOffset.y
-      }
-    }));
+    if (isPanningCanvas.current) {
+      const dx = (e.clientX - dragOrigin.current.x) / zoom;
+      const dy = (e.clientY - dragOrigin.current.y) / zoom;
+      dragOrigin.current = { x: e.clientX, y: e.clientY };
+      setPan(p => ({ x: p.x + dx, y: p.y + dy }));
+      return;
+    }
+    if (draggingNode) {
+      const dx = (e.clientX - dragOrigin.current.x) / zoom;
+      const dy = (e.clientY - dragOrigin.current.y) / zoom;
+      setPositions(prev => ({ ...prev, [draggingNode]: { x: dragOffset.x + dx, y: dragOffset.y + dy } }));
+    }
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
+    if (isPanningCanvas.current) {
+      isPanningCanvas.current = false;
+      e.currentTarget.releasePointerCapture(e.pointerId);
+      return;
+    }
     if (draggingNode) {
       setDraggingNode(null);
       e.currentTarget.releasePointerCapture(e.pointerId);
-      // Wait for React batch to settle geometry into positions, then save
       setTimeout(() => {
          setPositions(currentPos => {
            const p = currentPos[draggingNode];
            if(p) {
-              const newAgents = agents.map(a => a.key === draggingNode ? { ...a, x: p.x, y: p.y } : a);
-              setAgents(newAgents);
-              saveSystemState(newAgents, divisions);
+              const newAgents = agents.map((a:any) => a.key === draggingNode ? { ...a, x: p.x, y: p.y } : a);
+              updateActiveCompany(newAgents, divisions);
            }
            return currentPos;
          });
@@ -887,10 +990,21 @@ export default function Home() {
 
       {/* ── Top Navigation Bar ── */}
       <nav className="fixed top-0 left-0 right-0 h-16 border-b border-white/40 bg-gradient-to-b from-white/60 to-white/30 backdrop-blur-2xl z-50 shadow-sm px-6 flex items-center justify-between">
-         {/* Brand */}
+         {/* Brand & Multi-Company Switcher */}
          <div className="flex items-center gap-3 flex-shrink-0">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-600 to-blue-600 shadow-inner flex items-center justify-center text-white font-bold text-lg">U</div>
-            <h1 className="text-xl font-black bg-clip-text text-transparent bg-gradient-to-r from-gray-900 via-slate-800 to-gray-900 tracking-tight hidden sm:block">UHNWI+ idea checker</h1>
+            <div className="flex items-center gap-2">
+               <select value={activeCompanyId} onChange={e => {
+                   if(e.target.value === '__NEW__') { handleAddCompany(); }
+                   else { handleSwitchCompany(e.target.value); }
+               }} className="text-lg font-black bg-transparent text-gray-900 hover:text-indigo-600 cursor-pointer outline-none hidden sm:block appearance-none pr-4">
+                  {Object.entries(companies).map(([id, comp]: any) => (
+                      <option key={id} value={id}>{comp.name}</option>
+                  ))}
+                  <option disabled>──────────</option>
+                  <option value="__NEW__" className="font-bold text-indigo-600">+ Create New Startup</option>
+               </select>
+            </div>
             <div className="flex items-center gap-1.5 bg-white/90 px-2 py-1 rounded-md border border-gray-100 shadow-sm ml-2 sm:ml-4">
                 <span className="relative flex h-1.5 w-1.5">
                   {isConnected && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"/>}
@@ -973,9 +1087,9 @@ export default function Home() {
           </h2>
         </div>
         <div className="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-4">
-          {divisions.map(div => {
+          {divisions.map((div:any) => {
             const divKey = div.id;
-            const divAgents = agents.filter(a => a.div === divKey);
+            const divAgents = agents.filter((a:any) => a.div === divKey);
             const isExpanded = expandedDivs[divKey];
             return (
               <div key={divKey}>
@@ -986,8 +1100,8 @@ export default function Home() {
                       onChange={e=>setDivEditName(e.target.value)}
                       onBlur={()=>{
                         if(divEditName.trim() && divEditName !== div.name) {
-                          const newDivs = divisions.map(d=>d.id===divKey?{...d,name:divEditName}:d);
-                          setDivisions(newDivs); saveSystemState(agents, newDivs);
+                          const newDivs = divisions.map((d:any)=>d.id===divKey?{...d,name:divEditName}:d);
+                          updateActiveCompany(agents, newDivs);
                         }
                         setEditingDiv(null);
                       }}
@@ -1007,7 +1121,7 @@ export default function Home() {
                 {isExpanded && (
                   <div className="mt-2 ml-2 border-l border-gray-200 pl-3 space-y-1">
                     {divAgents.length === 0 && <span className="text-[10px] text-gray-400 italic">No personnel.</span>}
-                    {divAgents.map(a => {
+                    {divAgents.map((a:any) => {
                       const isActive = activeAgents.has(a.key);
                       const isDone = completedAgents.has(a.key);
                       return (
@@ -1066,10 +1180,12 @@ export default function Home() {
       </aside>
 
       {/* ── Main Canvas ── */}
-      <main className="fixed top-16 bottom-0 overflow-auto bg-transparent relative custom-scrollbar p-10 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]"
+      <main className={`fixed top-16 bottom-0 overflow-hidden bg-transparent relative transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${isSpaceDown||toolMode==='pan' ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
             style={{ left: isLeftPanelOpen ? 288 : 0, right: isRightPanelOpen ? 320 : 0 }}
-            onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerLeave={handlePointerUp}>
-        <div className="relative mx-auto my-10" style={{width:CANVAS_W, minHeight:CANVAS_H}}>
+            onPointerDown={handlePointerDownCanvas} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerLeave={handlePointerUp} onWheel={handleCanvasWheel}>
+        
+        {/* Infinite Space Container */}
+        <div style={{ transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`, transformOrigin: '0 0', width: CANVAS_W, height: CANVAS_H, position: 'absolute', top: 0, left: 0 }} className="will-change-transform">
           <svg width={CANVAS_W} height={CANVAS_H} className="absolute top-0 left-0 pointer-events-none z-10 overflow-visible">
             <defs>
               <marker id="arrow-default" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
@@ -1105,7 +1221,7 @@ export default function Home() {
               if (!pos) return null;
               return (
                 <div key={agent.key}
-                  onPointerDown={(e) => handlePointerDown(e, agent.key)}
+                  onPointerDown={(e) => handlePointerDownNode(e, agent.key)}
                   onClick={(e)=> {
                     const dist = Math.hypot(e.clientX - dragOrigin.current.x, e.clientY - dragOrigin.current.y);
                     if (dist < 5) setModalAgent(agent.key);
@@ -1140,6 +1256,28 @@ export default function Home() {
           </div>
         </div>
       </main>
+
+      {/* ── Bottom Dock (Mac OS Style) ── */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-1 p-2 bg-gradient-to-t from-white/90 to-white/60 backdrop-blur-3xl border border-white/60 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] rounded-2xl">
+         <button onClick={()=>setToolMode('move')} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${toolMode==='move'&&!isSpaceDown ? 'bg-blue-100 text-blue-600 shadow-inner' : 'text-gray-500 hover:bg-white/80 hover:text-gray-900'}`} title="Select (Arrow Tool)">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" /></svg>
+         </button>
+         <button onClick={()=>setToolMode('pan')} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${toolMode==='pan'||isSpaceDown ? 'bg-blue-100 text-blue-600 shadow-inner' : 'text-gray-500 hover:bg-white/80 hover:text-gray-900'}`} title="Pan (Hold Space)">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11" /></svg>
+         </button>
+         <div className="w-px h-6 bg-gray-300/50 mx-1"></div>
+         <button onClick={()=>{setPan({x:0, y:0}); setZoom(1);}} className="w-10 h-10 rounded-xl flex items-center justify-center text-gray-500 hover:bg-white/80 hover:text-gray-900 transition-all font-bold text-lg" title="Reset View (Scale 100%)">⌂</button>
+         <div className="w-px h-6 bg-gray-300/50 mx-1"></div>
+         <button onClick={()=>setZoom(z=>Math.max(0.1, z-0.1))} className="w-10 h-10 rounded-xl flex items-center justify-center text-gray-500 hover:bg-white/80 hover:text-gray-900 transition-all font-bold text-xl" title="Zoom Out (Cmd -)">−</button>
+         <div className="w-12 h-10 flex items-center justify-center text-[10px] font-bold text-gray-400 select-none">
+            {Math.round(zoom * 100)}%
+         </div>
+         <button onClick={()=>setZoom(z=>Math.min(3, z+0.1))} className="w-10 h-10 rounded-xl flex items-center justify-center text-gray-500 hover:bg-white/80 hover:text-gray-900 transition-all font-bold text-xl" title="Zoom In (Cmd +)">+</button>
+         <div className="w-px h-6 bg-gray-300/50 mx-1"></div>
+         <button onClick={fitView} className="px-3 h-10 rounded-xl flex items-center justify-center text-[10px] font-bold text-gray-500 hover:bg-white/80 hover:text-gray-900 transition-all uppercase tracking-widest" title="Fit Entire Org to Screen">
+            Fit
+         </button>
+      </div>
 
       {/* ── Contextual Tips System ── */}
       {showTip && (
