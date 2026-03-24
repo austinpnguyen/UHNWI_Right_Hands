@@ -90,7 +90,7 @@ db.exec(`
     model         TEXT,
     is_human      INTEGER DEFAULT 0,
     reports_to    TEXT,                       -- agent_key of direct superior (NULL = top level)
-    prompt_path   TEXT,                       -- relative path to the .md prompt file
+    system_prompt TEXT,                       -- raw markdown text of the instruction prompt
     active        INTEGER DEFAULT 1,          -- 0 = terminated/inactive
     created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(company_id, agent_key)
@@ -150,6 +150,19 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_logs_run  ON execution_logs(run_id);
   CREATE INDEX IF NOT EXISTS idx_logs_co   ON execution_logs(company_id, created_at);
+
+  -- ── GENERATED REPORTS ────────────────────────────────────────────────────
+  CREATE TABLE IF NOT EXISTS generated_reports (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    company_id  TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+    run_id      TEXT NOT NULL,
+    agent_key   TEXT NOT NULL,
+    phase       INTEGER,
+    content     TEXT NOT NULL,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX IF NOT EXISTS idx_reports_run ON generated_reports(run_id);
+  CREATE INDEX IF NOT EXISTS idx_reports_co  ON generated_reports(company_id);
 
   -- ── COMMUNICATIONS ───────────────────────────────────────────────────────
   CREATE TABLE IF NOT EXISTS communications (
@@ -337,7 +350,7 @@ function applyTemplateToCompany(companyId, templateId, defaultModel = null) {
 
     const apply = db.transaction(() => {
         for (const a of template.agents) {
-            insertAgent.run(companyId, a.agent_key, a.display_name, a.role, defaultModel || a.default_model || null, a.is_human);
+            insertAgent.run(companyId, a.agent_key, a.display_name, a.role, defaultModel || a.default_model || null, a.is_human, a.system_prompt || null);
         }
         for (const p of template.phases) {
             insertPhase.run(companyId, p.phase_number, p.label, p.agent_keys, p.run_parallel);
@@ -356,9 +369,9 @@ function getCompanyAgents(companyId) {
     return db.prepare(`SELECT * FROM company_agents WHERE company_id = ? ORDER BY id`).all(companyId);
 }
 
-function upsertCompanyAgent({ companyId, agentKey, displayName = null, role = null, model = null, isHuman = 0, reportsTo = null, promptPath = null, active = 1 }) {
+function upsertCompanyAgent({ companyId, agentKey, displayName = null, role = null, model = null, isHuman = 0, reportsTo = null, systemPrompt = null, active = 1 }) {
     db.prepare(`
-        INSERT INTO company_agents (company_id, agent_key, display_name, role, model, is_human, reports_to, prompt_path, active)
+        INSERT INTO company_agents (company_id, agent_key, display_name, role, model, is_human, reports_to, system_prompt, active)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(company_id, agent_key) DO UPDATE SET
             display_name = excluded.display_name,
@@ -366,9 +379,13 @@ function upsertCompanyAgent({ companyId, agentKey, displayName = null, role = nu
             model        = COALESCE(excluded.model, model),
             is_human     = excluded.is_human,
             reports_to   = excluded.reports_to,
-            prompt_path  = excluded.prompt_path,
+            system_prompt= excluded.system_prompt,
             active       = excluded.active
-    `).run(companyId, agentKey, displayName, role, model, isHuman ? 1 : 0, reportsTo, promptPath, active ? 1 : 0);
+    `).run(companyId, agentKey, displayName, role, model, isHuman ? 1 : 0, reportsTo, systemPrompt, active ? 1 : 0);
+}
+
+function getCompanyAgent(companyId, agentKey) {
+    return db.prepare(`SELECT * FROM company_agents WHERE company_id = ? AND agent_key = ?`).get(companyId, agentKey);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -460,6 +477,36 @@ function getRecentRuns(companyId, limit = 10) {
         ORDER BY started_at DESC
         LIMIT ?
     `).all(companyId, limit);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// GENERATED REPORTS
+// ══════════════════════════════════════════════════════════════════════════════
+
+function saveReport({ companyId, runId, agentKey, phase = null, content }) {
+    return db.prepare(`
+        INSERT INTO generated_reports (company_id, run_id, agent_key, phase, content)
+        VALUES (?, ?, ?, ?, ?)
+    `).run(companyId, runId, agentKey, phase, content).lastInsertRowid;
+}
+
+function getReportsByCompany(companyId, limit = 50) {
+    // Return metadata (excluding huge content blobs) for list views
+    return db.prepare(`
+        SELECT id, run_id, agent_key, phase, created_at
+        FROM generated_reports
+        WHERE company_id = ?
+        ORDER BY created_at DESC
+        LIMIT ?
+    `).all(companyId, limit);
+}
+
+function getReportContent(reportId, companyId) {
+    // Return specific report verifying company_id check for security
+    return db.prepare(`
+        SELECT * FROM generated_reports
+        WHERE id = ? AND company_id = ?
+    `).get(reportId, companyId);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -569,6 +616,7 @@ module.exports = {
 
     // Company Agents
     getCompanyAgents,
+    getCompanyAgent,
     upsertCompanyAgent,
 
     // Company Phases (Workflow)
@@ -588,6 +636,11 @@ module.exports = {
     getRunLogs,
     getRecentRuns,
 
+    // Generated Reports
+    saveReport,
+    getReportsByCompany,
+    getReportContent,
+
     // Communications
     logCommunication,
     updateCommunicationStatus,
@@ -602,4 +655,6 @@ module.exports = {
 
     // Analytics
     getCompanyStats,
+
+    db
 };

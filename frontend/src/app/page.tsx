@@ -832,6 +832,29 @@ export default function Home() {
   const [finalReportModalOpen, setFinalReportModalOpen] = useState(false);
   const [dismissedTip, setDismissedTip] = useState<string|null>(null);
   
+  const [dbReports, setDbReports] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (activeSidebarTab === 'docs' && activeCompanyId) {
+       fetch(`http://localhost:1110/brain/companies/${activeCompanyId}/reports`)
+         .then(r => r.json())
+         .then(data => {
+            if (Array.isArray(data)) setDbReports(data);
+         })
+         .catch(err => console.error('[Docs] Failed to fetch db reports:', err));
+    }
+  }, [activeSidebarTab, activeCompanyId]);
+
+  const fetchAndOpenReport = async (reportId: string|number, agentKey: string, runId: string) => {
+      try {
+          const res = await fetch(`http://localhost:1110/brain/reports/${reportId}?companyId=${activeCompanyId}`);
+          const data = await res.json();
+          if (data && data.content) {
+             setFinalReport({ fileName: `${agentKey}_${runId.substring(0,8)}.md`, content: data.content });
+             setFinalReportModalOpen(true);
+          }
+      } catch (err) { console.error('Error fetching report', err); }
+  };
   const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(false);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
   const [isHierarchyOpen, setIsHierarchyOpen] = useState(true);
@@ -1394,20 +1417,33 @@ export default function Home() {
            {/* Section 2: COMPANY DOCS */}
            {activeSidebarTab === 'docs' && (
              <div className="animate-in slide-in-from-right-4 fade-in duration-300">
-                <p className="text-[10px] text-amber-700/70 font-bold uppercase tracking-widest mb-4">Central Repository</p>
-                <div className="space-y-2 pl-1">
-                   <div className="flex items-center gap-2 cursor-pointer hover:bg-white/80 p-2.5 rounded-lg text-gray-600 transition-colors shadow-sm border border-transparent hover:border-amber-200">
-                     <span className="text-amber-500 text-lg drop-shadow-sm">📁</span>
-                     <span className="text-xs font-bold text-amber-900">Operating Procedures</span>
-                   </div>
-                   <div className="flex items-center gap-2 cursor-pointer hover:bg-white/80 p-2.5 rounded-lg text-gray-600 transition-colors shadow-sm border border-transparent hover:border-amber-200">
-                     <span className="text-amber-500 text-lg drop-shadow-sm">📁</span>
-                     <span className="text-xs font-bold text-amber-900">Agent Action Playbooks</span>
-                   </div>
-                   <div className="flex items-center gap-2 cursor-pointer hover:bg-white/80 p-2.5 rounded-lg text-gray-600 transition-colors shadow-sm border border-transparent hover:border-amber-200" onClick={()=>setFinalReportModalOpen(true)}>
-                     <span className="text-blue-500 text-lg drop-shadow-sm">📄</span>
-                     <span className="text-xs font-bold text-gray-800">Final Executive Reports</span>
-                   </div>
+                <p className="text-[10px] text-amber-700/70 font-bold uppercase tracking-widest mb-4">Database Reports</p>
+                <div className="space-y-4 pl-1">
+                   {dbReports.length === 0 ? (
+                       <p className="text-xs text-gray-400 italic">No reports generated yet.</p>
+                   ) : (
+                       Object.entries(
+                           dbReports.reduce((acc, r) => {
+                               acc[r.run_id] = acc[r.run_id] || [];
+                               acc[r.run_id].push(r);
+                               return acc;
+                           }, {} as Record<string, any[]>)
+                       ).map(([runId, reports]: [string, any]) => (
+                           <div key={runId} className="mb-4">
+                               <div className="text-[9px] font-bold text-gray-400 mb-2 uppercase tracking-wider border-b border-gray-100 pb-1">Run ID: {runId.substring(0,8)}...</div>
+                               <div className="space-y-1">
+                                  {reports.map((r: any) => (
+                                     <div key={r.id} onClick={() => fetchAndOpenReport(r.id, r.agent_key, runId)}
+                                          className="flex items-center gap-2 cursor-pointer hover:bg-white/80 p-2 rounded-lg text-gray-600 transition-colors shadow-sm border border-transparent hover:border-amber-200">
+                                       <span className="text-blue-500 text-sm drop-shadow-sm">📄</span>
+                                       <span className="text-[11px] font-semibold text-gray-800">{r.agent_key} Report</span>
+                                       <span className="text-[9px] text-gray-400 ml-auto">{new Date(r.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                     </div>
+                                  ))}
+                               </div>
+                           </div>
+                       ))
+                   )}
                 </div>
              </div>
            )}

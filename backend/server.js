@@ -19,6 +19,57 @@ app.use(express.json());
 
 const humanWaiters = {};
 
+// --- PROMPT MIGRATION TO SQLITE ---
+(function migratePrompts() {
+    try {
+        console.log('[MIGRATE] Checking if prompts need to be migrated to DB...');
+        const templateAgents = brain.db.prepare('SELECT agent_key, system_prompt FROM template_agents').all();
+        let needsMigration = false;
+        for (const a of templateAgents) {
+            if (!a.system_prompt) needsMigration = true;
+        }
+        if (needsMigration) {
+            console.log('[MIGRATE] Migrating markdown modules to DB...');
+            try { brain.db.exec('ALTER TABLE template_agents ADD COLUMN system_prompt TEXT;'); } catch(e){}
+            try { brain.db.exec('ALTER TABLE company_agents ADD COLUMN system_prompt TEXT;'); } catch(e){}
+
+            const updateTpl = brain.db.prepare('UPDATE template_agents SET system_prompt = ? WHERE agent_key = ?');
+            const updateCo  = brain.db.prepare('UPDATE company_agents SET system_prompt = ? WHERE agent_key = ?');
+            
+            const PROMPT_MAP = {
+                CEO:        '../agents/company/ceo.md',
+                CPO:        '../agents/company/cpo.md',
+                CFO:        '../agents/company/cfo.md',
+                CMO:        '../agents/company/cmo.md',
+                COO:        '../agents/company/coo.md',
+                COS:        '../agents/inner_circle/cos.md',
+                CIO:        '../agents/inner_circle/cio.md',
+                CISO:       '../agents/inner_circle/ciso.md',
+                FIXER:      '../agents/inner_circle/fixer.md',
+                WHISPERER:  '../agents/inner_circle/whisperer.md',
+                MKT_ANALYST:'../agents/market/market_analyst.md',
+                COMPETITOR: '../agents/market/competitor_simulator.md',
+                TARGET_BUYER:'../agents/market/target_buyer.md',
+                UNAWARE:    '../agents/market/unaware_audience.md',
+                AUDITOR:    '../agents/shield/auditor.md',
+                CLO:        '../agents/shield/clo.md',
+            };
+
+            let count = 0;
+            for (const [key, relativePath] of Object.entries(PROMPT_MAP)) {
+                const fullPath = path.join(__dirname, relativePath);
+                if (fs.existsSync(fullPath)) {
+                    let content = fs.readFileSync(fullPath, 'utf8').replace(/^---[\\s\\S]+?---\\n/, '');
+                    updateTpl.run(content, key);
+                    updateCo.run(content, key);
+                    count++;
+                }
+            }
+            console.log(`[MIGRATE] Prompts successfully migrated to DB! (${count} files embedded)`);
+        }
+    } catch(e) { console.error('[MIGRATE ERROR]', e); }
+})();
+
 app.post('/webhook/human/:agentKey', express.json(), (req, res) => {
     const key = req.params.agentKey;
     const { response } = req.body;
@@ -36,34 +87,14 @@ const INPUT_DIR  = path.join(__dirname, '../00_FOUNDER_INSTRUCTION');
 const CONFIG_PATH = path.join(__dirname, 'agent_config.json');
 if (!fs.existsSync(INPUT_DIR)) fs.mkdirSync(INPUT_DIR, { recursive: true });
 
-// ─── Agent prompt file map (relative to backend/) ────────────────────────────
-const AGENT_PROMPT_MAP = {
-    CEO:        '../agents/company/ceo.md',
-    CPO:        '../agents/company/cpo.md',
-    CFO:        '../agents/company/cfo.md',
-    CMO:        '../agents/company/cmo.md',
-    COO:        '../agents/company/coo.md',
-    COS:        '../agents/inner_circle/cos.md',
-    CIO:        '../agents/inner_circle/cio.md',
-    CISO:       '../agents/inner_circle/ciso.md',
-    FIXER:      '../agents/inner_circle/fixer.md',
-    WHISPERER:  '../agents/inner_circle/whisperer.md',
-    MKT_ANALYST:'../agents/market/market_analyst.md',
-    COMPETITOR: '../agents/market/competitor_simulator.md',
-    TARGET_BUYER:'../agents/market/target_buyer.md',
-    UNAWARE:    '../agents/market/unaware_audience.md',
-    AUDITOR:    '../agents/shield/auditor.md',
-    CLO:        '../agents/shield/clo.md',
-};
+
 
 const DEFAULT_MODEL = "ServiceNow-AI/Apriel-1.6-15b-Thinker";
 
 // ─── Agent config: persist per-agent model selection ────────────────────────
 function loadConfig() {
     if (!fs.existsSync(CONFIG_PATH)) {
-        const defaults = Object.fromEntries(
-            Object.keys(AGENT_PROMPT_MAP).map(k => [k, { model: DEFAULT_MODEL }])
-        );
+        const defaults = {};
         fs.writeFileSync(CONFIG_PATH, JSON.stringify(defaults, null, 2));
         return defaults;
     }
@@ -238,6 +269,32 @@ app.get('/brain/companies/:id/agents', (req, res) => {
     res.json(brain.getCompanyAgents(req.params.id));
 });
 
+// ── Reports (Database Migration Phase 1) ──
+app.get('/brain/companies/:id/reports', (req, res) => {
+    try {
+        const reports = brain.getReportsByCompany(req.params.id);
+        res.json(reports);
+    } catch (err) {
+        console.error('[API] /reports Error:', err);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+app.get('/brain/reports/:reportId', (req, res) => {
+    try {
+        const { companyId } = req.query;
+        if (!companyId) return res.status(400).json({ error: 'Missing companyId' });
+        
+        const report = brain.getReportContent(req.params.reportId, companyId);
+        if (!report) return res.status(404).json({ error: 'Report not found or unauthorized' });
+        
+        res.json(report);
+    } catch (err) {
+        console.error('[API] /reports/:id Error:', err);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
 // GET /brain/companies/:id/phases — workflow phases for a company
 app.get('/brain/companies/:id/phases', (req, res) => {
     res.json(brain.getCompanyPhases(req.params.id));
@@ -319,18 +376,21 @@ function stripFrontmatter(text) {
 }
 
 // Stream one agent — filters <think> tokens and respects socket.cancelled flag
-async function runAgent({ socket, agentKey, userMessage, outputPath, fallbackSystem, isHuman = false }) {
+async function runAgent({ socket, agentKey, userMessage, companyId, runId, phase = null, fallbackSystem, isHuman = false }) {
     const config     = loadConfig();
     const model      = config[agentKey]?.model || DEFAULT_MODEL;
-    const promptPath = AGENT_PROMPT_MAP[agentKey];
 
+    // Phase 3: Direct SQLite DB lookup for the agent system prompt
     let systemPrompt = "";
-    if (promptPath && fs.existsSync(path.join(__dirname, promptPath))) {
-        systemPrompt = stripFrontmatter(fs.readFileSync(path.join(__dirname, promptPath), 'utf8'));
+    
+    // First try to fetch company-specific prompt override
+    const companyAgent = brain.getCompanyAgent(companyId, agentKey);
+    if (companyAgent && companyAgent.system_prompt) {
+        systemPrompt = companyAgent.system_prompt;
     } else if (fallbackSystem) {
         systemPrompt = fallbackSystem;
     } else {
-        socket.emit('agent_log', { agent: agentKey, msg: `No prompt file for ${agentKey}, skipping.` });
+        socket.emit('agent_log', { agent: agentKey, msg: `No system prompt found in DB for ${agentKey}, skipping.` });
         return '';
     }
 
@@ -346,11 +406,9 @@ async function runAgent({ socket, agentKey, userMessage, outputPath, fallbackSys
         const finalOutput = `**[HUMAN EXECUTIVE RESPONSE]**\n\n${humanOutput}`;
         socket.emit('agent_stream', { agent: agentKey, chunk: `\n\n${finalOutput}` });
 
-        const outDir = path.dirname(outputPath);
-        if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
-        fs.writeFileSync(outputPath, finalOutput);
+        brain.saveReport({ companyId, runId, agentKey, phase, content: finalOutput });
 
-        socket.emit('agent_log', { agent: agentKey, msg: `[${agentKey}] Human Webhook Received -> ${path.basename(outputPath)}` });
+        socket.emit('agent_log', { agent: agentKey, msg: `[${agentKey}] Human Webhook Received -> DB (run: ${runId})` });
         socket.emit('agent_active', { agent: agentKey, active: false });
         return finalOutput;
     }
@@ -413,11 +471,9 @@ async function runAgent({ socket, agentKey, userMessage, outputPath, fallbackSys
     }
 
     if (output) {
-        const outDir = path.dirname(outputPath);
-        if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
-        fs.writeFileSync(outputPath, output);
+        brain.saveReport({ companyId, runId, agentKey, phase, content: output });
     }
-    socket.emit('agent_log',    { agent: agentKey, msg: `[${agentKey}] Complete -> ${path.basename(outputPath)}` });
+    socket.emit('agent_log',    { agent: agentKey, msg: `[${agentKey}] Complete -> DB` });
     socket.emit('agent_active', { agent: agentKey, active: false });
     return output;
 }
@@ -465,18 +521,6 @@ io.on('connection', (socket) => {
             // Ignore path errors and use literal text
         }
         
-        let safeDirName = data.instruction.replace(/\.(md|txt)$/, '');
-        if (safeDirName.length > 40 || safeDirName.includes('/') || safeDirName.includes('\\')) {
-            safeDirName = `run_${runId}`;
-        }
-        const outDir = path.join(__dirname, '../company_files/thoughts', safeDirName);
-        const now = new Date();
-        const yyyy = now.getFullYear();
-        const mm = String(now.getMonth() + 1).padStart(2, '0');
-        const dd = String(now.getDate()).padStart(2, '0');
-        const hh = String(now.getHours()).padStart(2, '0');
-        const hrTag = `${yyyy}${mm}${dd}_${hh}`;
-
         socket.emit('pipeline_phase', { phase: 1, total: 3, label: 'Phase 1 — CEO: Master Plan' });
 
         const safeRun = async (agentKey, userMessage, fallbackSystem = null, phase = null) => {
@@ -490,7 +534,7 @@ io.on('connection', (socket) => {
             const agentNode = agentsMap[agentKey] || {};
             brain.logEvent({ companyId, runId, agentKey, phase, eventType: 'start' });
             try {
-                const result = await runAgent({ socket, agentKey, userMessage, outputPath: path.join(outDir, `${agentKey}_${hrTag}.md`), fallbackSystem, isHuman: !!agentNode.isHuman });
+                const result = await runAgent({ socket, agentKey, userMessage, companyId, runId, phase, fallbackSystem, isHuman: !!agentNode.isHuman });
                 brain.logEvent({ companyId, runId, agentKey, phase, eventType: 'complete', payload: { outputLength: result?.length ?? 0 } });
                 return result;
             } catch (err) {
@@ -590,7 +634,6 @@ Whisperer: ${truncate(phase3Outputs[10], 2000)}
 ${customReportsCtx}
 `;
 
-            const finalReportFileName = `CEO_FINAL_REPORT_${hrTag}.md`;
             const ceoFinal = await runAgent({
                 socket, agentKey: 'CEO', 
                 userMessage: `EXECUTE YOUR ROLE: ALL Divisons have weighed in on your Master Plan V1. Below is the brutal feedback from the Market and the Shield.
@@ -605,12 +648,12 @@ This report MUST BE HIGHLY DESCRIPTIVE, structured with professional severity. I
 Do not just give a brief summary. Write a comprehensive, multi-section advisory report. Use Markdown.
 
 ${finalReportCtx}`,
-                outputPath: path.join(outDir, finalReportFileName)
+                companyId, runId, phase: 4
             });
 
-            brain.logEvent({ companyId, runId, eventType: 'complete', payload: { reportCount: 17, finalReport: finalReportFileName } });
-            socket.emit('agent_log',        { agent: 'System', msg: 'Pipeline [FULL DYNASTY] complete. 17 reports filed.' });
-            socket.emit('pipeline_complete', { phase: 'csuite', reportCount: 17, finalReport: finalReportFileName, finalReportContent: ceoFinal, runId });
+            brain.logEvent({ companyId, runId, eventType: 'complete', payload: { reportCount: 17 } });
+            socket.emit('agent_log',        { agent: 'System', msg: 'Pipeline [FULL DYNASTY] complete. 17 reports securely saved to DB.' });
+            socket.emit('pipeline_complete', { phase: 'csuite', reportCount: 17, finalReport: 'CEO_FINAL_REPORT', finalReportContent: ceoFinal, runId });
         } catch (err) {
             if (err.message === 'STOPPED') {
                 brain.logEvent({ companyId, runId, eventType: 'stopped' });
