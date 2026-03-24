@@ -36,8 +36,8 @@
           "icon": "📈",
           "color": "emerald",
           "div": "company",
-          "x": 500,
-          "y": 180,
+          "x": 480.059443925283,
+          "y": -116.09442501175263,
           "desc": "Creates the brutal financial constraint model and pricing matrices to ensure high gross margins."
         },
         {
@@ -47,7 +47,7 @@
           "icon": "📣",
           "color": "pink",
           "div": "company",
-          "x": 955.5354690591322,
+          "x": 956.5907076622392,
           "y": 174.9982904986874,
           "desc": "Formulates the Go-To-Market and elite brand strategy tailored for target demographics."
         },
@@ -189,7 +189,7 @@
       "divisions": [
         {
           "id": "company",
-          "name": "C-Suite"
+          "name": "C-Suite 1"
         },
         {
           "id": "inner_circle",

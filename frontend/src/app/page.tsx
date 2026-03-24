@@ -695,9 +695,10 @@ export default function Home() {
   const [contextMenu, setContextMenu] = useState<{x:number,y:number}|null>(null);
   const [appView, setAppView] = useState<'canvas'|'calendar'>('canvas');
   const [calView, setCalView] = useState<'day'|'week'|'bimonth'>('week');
-  const [calDate, setCalDate] = useState(() => new Date());
+  const [calDate, setCalDate] = useState<Date | null>(null);
   
   useEffect(() => {
+    setCalDate(new Date());
     setChatPos({ x: window.innerWidth / 2 - 32, y: window.innerHeight - 100 });
     const dismiss = () => setContextMenu(null);
     window.addEventListener('click', dismiss);
@@ -849,6 +850,7 @@ export default function Home() {
   useEffect(()=>{ if(logsRef.current) logsRef.current.scrollTop=logsRef.current.scrollHeight; },[logs]);
 
   useEffect(()=>{
+    if (!mounted) return;
     fetch('http://localhost:1110/system-state').then(r=>r.json()).then(data => {
       if (data.companies && data.activeCompanyId) {
         setCompanies(data.companies);
@@ -887,7 +889,7 @@ export default function Home() {
       }
     });
     return ()=>{ s.close(); };
-  },[]);
+  },[mounted]);
 
   const handleHumanWebhook = (agentKey: string, message: string) => {
     if (!socket) return;
@@ -1091,7 +1093,7 @@ export default function Home() {
   if (!mounted) return null; // Avoid all hydration mismatches by forcing client-only render
 
   return (
-    <div className="min-h-screen bg-[#f5f5f7] font-sans overflow-hidden">
+    <div className="min-h-screen bg-[#f5f5f7] font-sans overflow-hidden" suppressHydrationWarning>
       {modalDef && (
         <AgentModal agent={modalDef} onClose={()=>setModalAgent(null)}
           edges={edges}
@@ -1536,13 +1538,13 @@ export default function Home() {
           {/* Calendar Header */}
           <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-xl border-b border-gray-100 px-8 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <button onClick={() => { const d = new Date(calDate); if (calView==='day') d.setDate(d.getDate()-1); else if (calView==='week') d.setDate(d.getDate()-7); else d.setMonth(d.getMonth()-2); setCalDate(d); }} className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50">‹</button>
+              <button onClick={() => { const d = new Date(calDate ?? new Date()); if (calView==='day') d.setDate(d.getDate()-1); else if (calView==='week') d.setDate(d.getDate()-7); else d.setMonth(d.getMonth()-2); setCalDate(d); }} className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50">‹</button>
               <h2 className="text-base font-bold text-gray-900 min-w-56 text-center">
-                {calView === 'day' && calDate.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'})}
-                {calView === 'week' && (()=>{const s=new Date(calDate);s.setDate(s.getDate()-s.getDay());const e=new Date(s);e.setDate(e.getDate()+6);return `${s.toLocaleDateString(undefined,{month:'short',day:'numeric'})} – ${e.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})}`;})()}
-                {calView === 'bimonth' && (()=>{const m2=new Date(calDate);m2.setMonth(m2.getMonth()+1);return `${calDate.toLocaleDateString(undefined,{month:'long',year:'numeric'})} – ${m2.toLocaleDateString(undefined,{month:'long',year:'numeric'})}`;})()}
+                {calView === 'day' && (calDate ?? new Date()).toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'})}
+                {calView === 'week' && (()=>{const s=new Date(calDate ?? new Date());s.setDate(s.getDate()-s.getDay());const e=new Date(s);e.setDate(e.getDate()+6);return `${s.toLocaleDateString(undefined,{month:'short',day:'numeric'})} – ${e.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})}`;})()}
+                {calView === 'bimonth' && (()=>{const cd=calDate ?? new Date();const m2=new Date(cd);m2.setMonth(m2.getMonth()+1);return `${cd.toLocaleDateString(undefined,{month:'long',year:'numeric'})} – ${m2.toLocaleDateString(undefined,{month:'long',year:'numeric'})}`;})()}
               </h2>
-              <button onClick={() => { const d = new Date(calDate); if (calView==='day') d.setDate(d.getDate()+1); else if (calView==='week') d.setDate(d.getDate()+7); else d.setMonth(d.getMonth()+2); setCalDate(d); }} className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50">›</button>
+              <button onClick={() => { const d = new Date(calDate ?? new Date()); if (calView==='day') d.setDate(d.getDate()+1); else if (calView==='week') d.setDate(d.getDate()+7); else d.setMonth(d.getMonth()+2); setCalDate(d); }} className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50">›</button>
               <button onClick={() => setCalDate(new Date())} className="px-3 py-1.5 rounded-xl border border-gray-200 text-[11px] font-bold text-gray-600 hover:bg-gray-50">Today</button>
             </div>
             <div className="flex items-center gap-0.5 bg-gray-100/70 rounded-xl p-1 border border-gray-200/50">
@@ -1580,7 +1582,7 @@ export default function Home() {
 
           {/* ── Week View ── */}
           {calView === 'week' && (()=>{
-            const s=new Date(calDate);s.setDate(s.getDate()-s.getDay());
+            const s=new Date(calDate ?? new Date());s.setDate(s.getDate()-s.getDay());
             const days=Array.from({length:7},(_,i)=>{const d=new Date(s);d.setDate(d.getDate()+i);return d;});
             const today=new Date();
             return(
@@ -1617,7 +1619,7 @@ export default function Home() {
           {calView === 'bimonth' && (
             <div className="p-6 grid grid-cols-2 gap-6">
               {[0,1].map(mo=>{
-                const mDate=new Date(calDate.getFullYear(),calDate.getMonth()+mo,1);
+                const mDate=new Date((calDate ?? new Date()).getFullYear(),(calDate ?? new Date()).getMonth()+mo,1);
                 const dim=new Date(mDate.getFullYear(),mDate.getMonth()+1,0).getDate();
                 const firstDow=mDate.getDay();
                 const today=new Date();

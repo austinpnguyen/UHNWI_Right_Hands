@@ -96,6 +96,35 @@ function getActiveCompanyId() {
     return state.activeCompanyId || null;
 }
 
+/**
+ * Executes an array of async functions with a maximum concurrency limit.
+ * This prevents overwhelming the Node.js event loop and LLM API rate limits.
+ * @param {Function[]} tasks Array of functions that return Promises
+ * @param {number} maxConcurrent Maximum number of tasks to run simultaneously
+ * @returns {Promise<any[]>} Results in the same order as tasks
+ */
+async function asyncQueue(tasks, maxConcurrent) {
+    const results = new Array(tasks.length);
+    let currentIndex = 0;
+
+    async function worker() {
+        while (currentIndex < tasks.length) {
+            const index = currentIndex++;
+            try {
+                results[index] = await tasks[index]();
+            } catch (err) {
+                // If one fails, we store the error and keep going (or throw, depending on needs)
+                // We'll throw so it bubbles up like Promise.all
+                throw err;
+            }
+        }
+    }
+
+    const workers = Array.from({ length: Math.min(maxConcurrent, tasks.length) }, worker);
+    await Promise.all(workers);
+    return results;
+}
+
 // Sync companies into brain DB on startup
 (function bootstrapDb() {
     const state = loadSystemState();
@@ -499,25 +528,27 @@ ${instructionContent}`;
             const customPhase3 = activeKeys.filter(k => !HARDCODED_PHASE_3.includes(k) && !['CEO', 'CPO', 'CFO', 'CMO', 'COO'].includes(k));
 
             // Phase 3: Specialized execution branches based on C-Suite outputs
-            const phase3Promises = [
-                safeRun('CIO',          `EXECUTE YOUR ROLE. Review the CPO Architecture and define the Tech Infrastructure.\n\nCPO ARCHITECTURE:\n${cpoArch}`),
-                safeRun('AUDITOR',      `EXECUTE YOUR ROLE. Validate and aggressively stress-test the CFO's Financial Model.\n\nCFO FINANCIAL MODEL:\n${cfoFin}`),
-                safeRun('CLO',          `EXECUTE YOUR ROLE. Review the CFO Financials for legal and compliance risks.\n\nCFO FINANCIAL MODEL:\n${cfoFin}`),
-                safeRun('MKT_ANALYST',  `EXECUTE YOUR ROLE. Analyze the CMO's GTM Strategy for market viability.\n\nCMO GTM STRATEGY:\n${cmoGtm}`),
-                safeRun('COMPETITOR',   `EXECUTE YOUR ROLE. Act as the Competitor Simulator to destroy the CMO's GTM Strategy.\n\nCMO GTM STRATEGY:\n${cmoGtm}`),
-                safeRun('TARGET_BUYER', `EXECUTE YOUR ROLE. Act as the Target Buyer evaluating the CMO's GTM Strategy.\n\nCMO GTM STRATEGY:\n${cmoGtm}`),
-                safeRun('UNAWARE',      `EXECUTE YOUR ROLE. Evaluate the CMO's GTM Strategy from the perspective of an unaware layperson.\n\nCMO GTM STRATEGY:\n${cmoGtm}`),
-                safeRun('COS',          `EXECUTE YOUR ROLE. Review the COO's Ops Framework and output an executive coordination schedule.\n\nCOO OPS FRAMEWORK:\n${cooOps}`),
-                safeRun('CISO',         `EXECUTE YOUR ROLE. Review the COO's Ops Framework for security vulnerabilities.\n\nCOO OPS FRAMEWORK:\n${cooOps}`),
-                safeRun('FIXER',        `EXECUTE YOUR ROLE. Identify crisis points in the COO's Ops Framework and plan resolutions.\n\nCOO OPS FRAMEWORK:\n${cooOps}`),
-                safeRun('WHISPERER',    `EXECUTE YOUR ROLE. Review the COO's Ops Framework for intelligence vulnerabilities.\n\nCOO OPS FRAMEWORK:\n${cooOps}`),
+            // We use lazy functions to prevent starting them all at once
+            const phase3Tasks = [
+                () => safeRun('CIO',          `EXECUTE YOUR ROLE. Review the CPO Architecture and define the Tech Infrastructure.\n\nCPO ARCHITECTURE:\n${cpoArch}`),
+                () => safeRun('AUDITOR',      `EXECUTE YOUR ROLE. Validate and aggressively stress-test the CFO's Financial Model.\n\nCFO FINANCIAL MODEL:\n${cfoFin}`),
+                () => safeRun('CLO',          `EXECUTE YOUR ROLE. Review the CFO Financials for legal and compliance risks.\n\nCFO FINANCIAL MODEL:\n${cfoFin}`),
+                () => safeRun('MKT_ANALYST',  `EXECUTE YOUR ROLE. Analyze the CMO's GTM Strategy for market viability.\n\nCMO GTM STRATEGY:\n${cmoGtm}`),
+                () => safeRun('COMPETITOR',   `EXECUTE YOUR ROLE. Act as the Competitor Simulator to destroy the CMO's GTM Strategy.\n\nCMO GTM STRATEGY:\n${cmoGtm}`),
+                () => safeRun('TARGET_BUYER', `EXECUTE YOUR ROLE. Act as the Target Buyer evaluating the CMO's GTM Strategy.\n\nCMO GTM STRATEGY:\n${cmoGtm}`),
+                () => safeRun('UNAWARE',      `EXECUTE YOUR ROLE. Evaluate the CMO's GTM Strategy from the perspective of an unaware layperson.\n\nCMO GTM STRATEGY:\n${cmoGtm}`),
+                () => safeRun('COS',          `EXECUTE YOUR ROLE. Review the COO's Ops Framework and output an executive coordination schedule.\n\nCOO OPS FRAMEWORK:\n${cooOps}`),
+                () => safeRun('CISO',         `EXECUTE YOUR ROLE. Review the COO's Ops Framework for security vulnerabilities.\n\nCOO OPS FRAMEWORK:\n${cooOps}`),
+                () => safeRun('FIXER',        `EXECUTE YOUR ROLE. Identify crisis points in the COO's Ops Framework and plan resolutions.\n\nCOO OPS FRAMEWORK:\n${cooOps}`),
+                () => safeRun('WHISPERER',    `EXECUTE YOUR ROLE. Review the COO's Ops Framework for intelligence vulnerabilities.\n\nCOO OPS FRAMEWORK:\n${cooOps}`),
             ];
 
             customPhase3.forEach(k => {
-                phase3Promises.push(safeRun(k, `EXECUTE YOUR ROLE as ${k}. Analyze the Founder's Instruction and CEO Master Plan to provide your specialized executive strategy.\n\n${sharedCtx}`, `You are ${k}, an elite executive. Write a highly analytical, ruthless strategic assessment. Format in beautiful markdown.`));
+                phase3Tasks.push(() => safeRun(k, `EXECUTE YOUR ROLE as ${k}. Analyze the Founder's Instruction and CEO Master Plan to provide your specialized executive strategy.\n\n${sharedCtx}`, `You are ${k}, an elite executive. Write a highly analytical, ruthless strategic assessment. Format in beautiful markdown.`));
             });
 
-            const phase3Outputs = await Promise.all(phase3Promises);
+            // Limit concurrency to 3 simultaneous agents so the server event loop doesn't slow down
+            const phase3Outputs = await asyncQueue(phase3Tasks, 3);
 
             socket.emit('agent_log', { agent: 'System', msg: 'Phase 3 complete. CEO is synthesizing Final Report (Phase 4)...' });
             socket.emit('pipeline_phase', { phase: 4, total: 4, label: 'Phase 4 — CEO: Final Synthesis' });
