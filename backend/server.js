@@ -319,7 +319,7 @@ function stripFrontmatter(text) {
 }
 
 // Stream one agent — filters <think> tokens and respects socket.cancelled flag
-async function runAgent({ socket, agentKey, userMessage, outputPath, fallbackSystem }) {
+async function runAgent({ socket, agentKey, userMessage, outputPath, fallbackSystem, isHuman = false }) {
     const config     = loadConfig();
     const model      = config[agentKey]?.model || DEFAULT_MODEL;
     const promptPath = AGENT_PROMPT_MAP[agentKey];
